@@ -194,19 +194,20 @@ int _tmain(int argc, char* argv[])
 					family = get_family(my_family_member, &kmer_data_base_RA);
 					std::string kmer_str;
 					kmer_object.to_string(kmer_str);
-					if (family.size() > 8)
+					if (family.size() > 2)
 					{
 						visited_members.insert(family.begin(), family.end());
 					}
-					else if (family.size() >= 2)
+					else
 					{
-						std::sort(family.begin(), family.end(), [](family_member f1, family_member f2) {return f1.counter > f2.counter;});
+						std::sort(family.begin(), family.end(), [](family_member f1, family_member f2) {return f1.counter < f2.counter;});
 						std::string line1;
-						line1 = std::to_string(family.size());
-						for (unsigned int i=0;i < family.size(); i++)
-						{
-							line1.append("\t" + std::to_string((family.at(i)).counter));
-						}
+                                                //line1 = std::to_string(family.size());
+						line1.append(std::to_string((family.at(0)).counter) + "\t" + std::to_string((family.at(1)).counter));
+						//for (unsigned int i=0;i < family.size(); i++)
+						//{
+						//	line1.append("\t" + std::to_string((family.at(i)).counter));
+						//}
 						line1.append("\n");
 						const char *c = line1.c_str();
 						fprintf(out_file, "%s", c);
