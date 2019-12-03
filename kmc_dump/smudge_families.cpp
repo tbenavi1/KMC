@@ -198,7 +198,7 @@ int _tmain(int argc, char* argv[])
 					{
 						visited_members.insert(family.begin(), family.end());
 					}
-					else
+					else if (family.size() == 2)
 					{
 						std::sort(family.begin(), family.end(), [](family_member f1, family_member f2) {return f1.counter < f2.counter;});
 						std::string line1;
