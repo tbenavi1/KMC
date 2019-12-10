@@ -1,4 +1,4 @@
-all: kmc kmc_dump kmc_tools py_kmc_api smudge_families
+all: kmc kmc_dump kmc_tools py_kmc_api smudge_pairs
 
 KMC_BIN_DIR = bin
 KMC_MAIN_DIR = kmer_counter
@@ -46,7 +46,7 @@ KMC_DUMP_OBJS = \
 $(KMC_DUMP_DIR)/kmc_dump.o
 
 KMC_SMUDGE_OBJS = \
-$(KMC_DUMP_DIR)/smudge_families.o
+$(KMC_DUMP_DIR)/smudge_pairs.o
 
 KMC_API_OBJS = \
 $(KMC_API_DIR)/mmer.o \
@@ -95,7 +95,7 @@ kmc_dump: $(KMC_DUMP_OBJS) $(KMC_UTIL_OBJS) $(KMC_API_OBJS)
 	-mkdir -p $(KMC_BIN_DIR)
 	$(CC) $(CLINK) -o $(KMC_BIN_DIR)/$@ $^
 
-smudge_families: $(KMC_SMUDGE_OBJS) $(KMC_API_OBJS) $(KMC_UTIL_OBJS)
+smudge_pairs: $(KMC_SMUDGE_OBJS) $(KMC_API_OBJS) $(KMC_UTIL_OBJS)
 	-mkdir -p $(KMC_BIN_DIR)
 	 $(CC) $(CLINK) -o $(KMC_BIN_DIR)/$@ $^
 
