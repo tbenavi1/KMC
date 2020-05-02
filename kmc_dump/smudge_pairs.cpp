@@ -87,8 +87,10 @@ int _tmain(int argc, char* argv[])
 	uint32 max_count_to_set = 0;
 	std::string input_file_name;
 	std::string output_file_name;
+  std::string output_file_name2;
 
 	FILE * out_file;
+  FILE * out_file2;
 	//------------------------------------------------------------
 	// Parse input parameters
 	//------------------------------------------------------------
@@ -116,14 +118,22 @@ int _tmain(int argc, char* argv[])
 	}
 
 	input_file_name = std::string(argv[i++]);
-	output_file_name = std::string(argv[i]);
+	output_file_name = std::string(argv[i++]);
+  output_file_name2 = std::string(argv[i]);
 
 	if((out_file = fopen (output_file_name.c_str(),"wb")) == NULL)
 	{
 		return EXIT_FAILURE;
 	}
 
+  if((out_file2 = fopen (output_file_name2.c_str(),"wb")) == NULL)
+  {
+    return EXIT_FAILURE;
+  }
+
+
 	setvbuf(out_file, NULL ,_IOFBF, 1 << 24);
+  setvbuf(out_file2, NULL ,_IOFBF, 1 << 24);
 
 	//------------------------------------------------------------------------------
 	// Open kmer database for listing and print kmers within min_count and max_count
@@ -187,6 +197,9 @@ int _tmain(int argc, char* argv[])
 			std::vector<family_member> family;
 			while (kmer_data_base_listing.ReadNextKmer(kmer_object, counter))
 			{
+        //std::string kmer_test;
+        //kmer_object.to_string(kmer_test);
+        //std::cout << kmer_test << "\n";
 				family_member my_family_member = {kmer_object, counter};
 				std::set<family_member>::iterator it = visited_members.find(my_family_member);
 				if (it == visited_members.end())
@@ -202,15 +215,24 @@ int _tmain(int argc, char* argv[])
 					{
 						std::sort(family.begin(), family.end(), [](family_member f1, family_member f2) {return f1.counter < f2.counter;});
 						std::string line1;
+            std::string line2;
                                                 //line1 = std::to_string(family.size());
 						line1.append(std::to_string((family.at(0)).counter) + "\t" + std::to_string((family.at(1)).counter));
+						std::string kmer_str1;
+            std::string kmer_str2;
+            (family.at(0)).kmer_object.to_string(kmer_str1);
+            (family.at(1)).kmer_object.to_string(kmer_str2);
+            line2.append(kmer_str1 + "\t" + kmer_str2);
 						//for (unsigned int i=0;i < family.size(); i++)
 						//{
 						//	line1.append("\t" + std::to_string((family.at(i)).counter));
 						//}
 						line1.append("\n");
+            line2.append("\n");
 						const char *c = line1.c_str();
+            const char *c2 = line2.c_str();
 						fprintf(out_file, "%s", c);
+            fprintf(out_file2, "%s", c2);
 					}
 				}
 				else
