@@ -24,7 +24,15 @@ public:
 		{ 
 			for (uint j=0; j<nucleotides.length(); j++)
 			{
-				if (str[i] < nucleotides[j])
+        //std::string str_new = str;
+        //str_new.replace(i,1,nucleotides.substr(j,1));
+        //if (str_new.compare(str))
+        //{
+        //  CKmerAPI_Derived kmer_object_new(kmer_length);
+        //  kmer_object_new.from_string(str_new);
+        //  candidates.push_back(kmer_object_new);
+        //}
+				if (str[i] != nucleotides[j]) //changed < to !=
 				{
 					std::string str_new = str;
 					str_new.replace(i,1,nucleotides.substr(j,1));
@@ -60,14 +68,23 @@ std::vector<family_member> get_family(family_member my_family_member, CKMCFile *
 	family_objects.insert(kmer_object);
 	family.push_back(my_family_member);
 	Q.push(kmer_object);
+  std::string my_family_member_kmer;
+  my_family_member.kmer_object.to_string(my_family_member_kmer);
 	while (!Q.empty())
 	{
 		kmer_object = Q.front();
 		Q.pop();
+    //For each candidate kmer
 		for (CKmerAPI_Derived kmer_candidate_object : kmer_object.CandidateKmers())
 		{
-			if (database->CheckKmer(kmer_candidate_object, candidate_counter) && family_objects.find(kmer_candidate_object) == family_objects.end())
+      std::string kmer_candidate;
+      kmer_candidate_object.to_string(kmer_candidate);
+      //If the candidate kmer is later in the alphabet than the original family member and it is not yet in family and it is in the database
+      //Actually, the check for candidate kmer later in the alphabet than original is superfluous. If we correctly track visitied members we will never run into this case
+      //(kmer_candidate.compare(my_family_member_kmer) > 0) && 
+			if ((family_objects.find(kmer_candidate_object) == family_objects.end()) && database->CheckKmer(kmer_candidate_object, candidate_counter))
 			{
+        //add candidate kmer to the family, and to the queue
 				family_objects.insert(kmer_candidate_object);
 				family_member candidate_family_member = {kmer_candidate_object, candidate_counter};
 				family.push_back(candidate_family_member);
@@ -202,17 +219,22 @@ int _tmain(int argc, char* argv[])
         //std::cout << kmer_test << "\n";
 				family_member my_family_member = {kmer_object, counter};
 				std::set<family_member>::iterator it = visited_members.find(my_family_member);
+        //If this kmer has not been visited
 				if (it == visited_members.end())
 				{
+          //get the family (connected component) of this kmer
 					family = get_family(my_family_member, &kmer_data_base_RA);
 					std::string kmer_str;
 					kmer_object.to_string(kmer_str);
-					if (family.size() > 2)
+          std::cout << family.size() << "\n";
+					if (family.size() >= 2) // changed from > to >=
 					{
-						visited_members.insert(family.begin(), family.end());
+            //add family members to visited, except the original which we shouldn't see again
+						visited_members.insert(family.begin()+1, family.end()); //added +1
 					}
-					else if (family.size() == 2)
-					{
+					//if ((family.size() == 2) && (20 <= (family.at(0)).counter) && ((family.at(0)).counter <= 50) && (20 <= (family.at(1)).counter) && ((family.at(1)).counter <= 50))
+					if ((family.size() == 2))
+          {
 						std::sort(family.begin(), family.end(), [](family_member f1, family_member f2) {return f1.counter < f2.counter;});
 						std::string line1;
             std::string line2;
@@ -235,6 +257,7 @@ int _tmain(int argc, char* argv[])
             fprintf(out_file2, "%s", c2);
 					}
 				}
+        //if the kmer has been visited
 				else
 				{
 					visited_members.erase(it);
