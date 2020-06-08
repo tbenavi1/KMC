@@ -72,7 +72,7 @@ std::vector<family_member> get_family(family_member my_family_member, CKMCFile *
 			std::string kmer_candidate;
 			kmer_candidate_object.to_string(kmer_candidate);
 			//If the candidate kmer is later in the alphabet than the original family member and it is not yet in family and it is in the database
-			//Actually, the check for candidate kmer later in the alphabet than original is superfluous. If we correctly track visitied members we will never run into this case
+			//Actually, the check for candidate kmer later in the alphabet than original is superfluous. If we correctly track visited members we will never run into this case
 			//(kmer_candidate.compare(my_family_member_kmer) > 0) && 
 			if ((family_objects.find(kmer_candidate_object) == family_objects.end()) && database->CheckKmer(kmer_candidate_object, candidate_counter))
 			{
