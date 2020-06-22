@@ -63,7 +63,7 @@ public:
 						kmer_object_new.to_string(reverse_edited_str);
 						if (forward_edited_str < reverse_edited_str)
 						{
-							kmer_object_new.reverse()
+							kmer_object_new.reverse();
 						}
 						candidates.push_back(kmer_object_new);
 					}
