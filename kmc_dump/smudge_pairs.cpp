@@ -17,23 +17,30 @@ public:
 	std::vector<CKmerAPI_Derived> CandidateKmers()
 	{
 		std::vector<CKmerAPI_Derived> candidates;
-		std::string str;
-		this->to_string(str);
+		std::string original_str;
+		this->to_string(original_str);
 		//std::string nucleotides = "ACGT";
-    std::map<char, std::string> replacements;
-    replacements['A']="CGT";
-    replacements['C']="AGT";
-    replacements['G']="ACT";
-    replacements['T']="ACG";
+		std::map<char, std::string> replacements;
+		replacements['A']="CGT";
+		replacements['C']="AGT";
+		replacements['G']="ACT";
+		replacements['T']="ACG";
 		//Add kmers one SNP away
 		for (uint i=0; i<kmer_length; i++)
 		{
 			for (uint j=0; j<3; j++)
 			{
-				std::string str_new = str;
-				str_new.replace(i,1,replacements[str[i]].substr(j,1));
+				std::string forward_edited_str = original_str;
+				std::string reverse_edited_str;
+				forward_edited_str.replace(i,1,replacements[original_str[i]].substr(j,1));
 				CKmerAPI_Derived kmer_object_new(kmer_length);
-				kmer_object_new.from_string(str_new);
+				kmer_object_new.from_string(forward_edited_str);
+				kmer_object_new.reverse();
+				kmer_object_new.to_string(reverse_edited_str);
+				if (forward_edited_str < reverse_edited_str)
+				{
+					kmer_object_new.reverse();
+				}
 				candidates.push_back(kmer_object_new);
 			}
 		}
@@ -46,15 +53,22 @@ public:
 				{
 					for (uint j2=0; j2<3; j2++)
 					{
-						std::string str_new = str;
-						str_new.replace(i,1,replacements[str[i]].substr(j,1));
-            str_new.replace(i2,1,replacements[str[i2]].substr(j2,1));
+						std::string forward_edited_str = original_str;
+						std::string reverse_edited_str;
+						forward_edited_str.replace(i,1,replacements[original_str[i]].substr(j,1));
+						forward_edited_str.replace(i2,1,replacements[original_str[i2]].substr(j2,1));
 						CKmerAPI_Derived kmer_object_new(kmer_length);
-						kmer_object_new.from_string(str_new);
+						kmer_object_new.from_string(forward_edited_str);
+						kmer_object_new.reverse();
+						kmer_object_new.to_string(reverse_edited_str);
+						if (forward_edited_str < reverse_edited_str)
+						{
+							kmer_object_new.reverse()
+						}
 						candidates.push_back(kmer_object_new);
 					}
 				}
-    	}
+			}
 		}
 		return candidates;
 	}
