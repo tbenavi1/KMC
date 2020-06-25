@@ -20,25 +20,23 @@ public:
 		std::string original_str;
 		this->to_string(original_str);
 		std::string nucleotides = "ACGT";
-		for (uint i=0; i<kmer_length; i++)
+		i = kmer_length/2
+		for (uint j=0; j<nucleotides.length(); j++)
 		{
-			for (uint j=0; j<nucleotides.length(); j++)
+			if (original_str[i] != nucleotides[j]) //changed < to !=
 			{
-				if (original_str[i] != nucleotides[j]) //changed < to !=
+				std::string forward_edited_str = original_str;
+				std::string reverse_edited_str;
+				forward_edited_str.replace(i,1,nucleotides.substr(j,1));
+				CKmerAPI_Derived kmer_object_new(kmer_length);
+				kmer_object_new.from_string(forward_edited_str);
+				kmer_object_new.reverse();
+				kmer_object_new.to_string(reverse_edited_str);
+				if (forward_edited_str < reverse_edited_str)
 				{
-					std::string forward_edited_str = original_str;
-					std::string reverse_edited_str;
-					forward_edited_str.replace(i,1,nucleotides.substr(j,1));
-					CKmerAPI_Derived kmer_object_new(kmer_length);
-					kmer_object_new.from_string(forward_edited_str);
 					kmer_object_new.reverse();
-					kmer_object_new.to_string(reverse_edited_str);
-					if (forward_edited_str < reverse_edited_str)
-					{
-						kmer_object_new.reverse();
-					}
-					candidates.push_back(kmer_object_new);
 				}
+				candidates.push_back(kmer_object_new);
 			}
 		}
 		return candidates;
