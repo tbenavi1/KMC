@@ -20,7 +20,7 @@ public:
 		std::string original_str;
 		this->to_string(original_str);
 		std::string nucleotides = "ACGT";
-		i = kmer_length/2
+		uint i = kmer_length/2;
 		for (uint j=0; j<nucleotides.length(); j++)
 		{
 			if (original_str[i] != nucleotides[j]) //changed < to !=
