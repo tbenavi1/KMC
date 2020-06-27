@@ -26,7 +26,7 @@ public:
 		replacements['G']="ACT";
 		replacements['T']="ACG";
 		//Add kmers one SNP away
-		uint i = k/2;
+		uint i = kmer_length/2;
 		for (uint j=0; j<3; j++)
 		{
 			std::string forward_edited_str = original_str;
@@ -44,9 +44,9 @@ public:
 		}
 		//Add kmers two SNPs away
 		//for (uint i=0; i<kmer_length; i++)
-		for (uint g=1; g<k; g++)
+		for (uint g=1; g<kmer_length; g++)
 		{
-			uint i = k/2 - (g+1)/2;
+			uint i = kmer_length/2 - (g+1)/2;
 			uint i2 = i + g;
 			for (uint j=0; j<3; j++)
 			{
