@@ -26,47 +26,45 @@ public:
 		replacements['G']="ACT";
 		replacements['T']="ACG";
 		//Add kmers one SNP away
-		for (uint i=0; i<kmer_length; i++)
+		uint i = k/2;
+		for (uint j=0; j<3; j++)
 		{
-			for (uint j=0; j<3; j++)
+			std::string forward_edited_str = original_str;
+			std::string reverse_edited_str;
+			forward_edited_str.replace(i,1,replacements[original_str[i]].substr(j,1));
+			CKmerAPI_Derived kmer_object_new(kmer_length);
+			kmer_object_new.from_string(forward_edited_str);
+			kmer_object_new.reverse();
+			kmer_object_new.to_string(reverse_edited_str);
+			if (forward_edited_str < reverse_edited_str)
 			{
-				std::string forward_edited_str = original_str;
-				std::string reverse_edited_str;
-				forward_edited_str.replace(i,1,replacements[original_str[i]].substr(j,1));
-				CKmerAPI_Derived kmer_object_new(kmer_length);
-				kmer_object_new.from_string(forward_edited_str);
 				kmer_object_new.reverse();
-				kmer_object_new.to_string(reverse_edited_str);
-				if (forward_edited_str < reverse_edited_str)
-				{
-					kmer_object_new.reverse();
-				}
-				candidates.push_back(kmer_object_new);
 			}
+			candidates.push_back(kmer_object_new);
 		}
 		//Add kmers two SNPs away
-		for (uint i=0; i<kmer_length; i++)
+		//for (uint i=0; i<kmer_length; i++)
+		for (uint g=1; g<k; g++)
 		{
-			for (uint i2=0; i2<i; i2++)
+			uint i = k/2 - (g+1)/2;
+			uint i2 = i + g;
+			for (uint j=0; j<3; j++)
 			{
-				for (uint j=0; j<3; j++)
+				for (uint j2=0; j2<3; j2++)
 				{
-					for (uint j2=0; j2<3; j2++)
+					std::string forward_edited_str = original_str;
+					std::string reverse_edited_str;
+					forward_edited_str.replace(i,1,replacements[original_str[i]].substr(j,1));
+					forward_edited_str.replace(i2,1,replacements[original_str[i2]].substr(j2,1));
+					CKmerAPI_Derived kmer_object_new(kmer_length);
+					kmer_object_new.from_string(forward_edited_str);
+					kmer_object_new.reverse();
+					kmer_object_new.to_string(reverse_edited_str);
+					if (forward_edited_str < reverse_edited_str)
 					{
-						std::string forward_edited_str = original_str;
-						std::string reverse_edited_str;
-						forward_edited_str.replace(i,1,replacements[original_str[i]].substr(j,1));
-						forward_edited_str.replace(i2,1,replacements[original_str[i2]].substr(j2,1));
-						CKmerAPI_Derived kmer_object_new(kmer_length);
-						kmer_object_new.from_string(forward_edited_str);
 						kmer_object_new.reverse();
-						kmer_object_new.to_string(reverse_edited_str);
-						if (forward_edited_str < reverse_edited_str)
-						{
-							kmer_object_new.reverse();
-						}
-						candidates.push_back(kmer_object_new);
 					}
+					candidates.push_back(kmer_object_new);
 				}
 			}
 		}
