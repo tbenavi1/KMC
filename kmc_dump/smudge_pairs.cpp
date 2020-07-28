@@ -4,7 +4,7 @@
 #include "./../kmc_api/kmc_file.h"
 #include "nc_utils.h"
 #include <queue>
-#include <set>
+#include <unordered_set>
 #include <numeric>
 #include <map>
 
@@ -19,7 +19,6 @@ public:
 		std::vector<CKmerAPI_Derived> candidates;
 		std::string original_str;
 		this->to_string(original_str);
-		//std::string nucleotides = "ACGT";
 		std::map<char, std::string> replacements;
 		replacements['A']="CGT";
 		replacements['C']="AGT";
@@ -44,10 +43,9 @@ public:
 		}
 		//Add kmers two SNPs away
 		//for (uint i=0; i<kmer_length; i++)
-		for (uint g=1; g<kmer_length; g++)
+		for (uint i2=0; i2<kmer_length; i2++)
 		{
-			uint i = kmer_length/2 - (g+1)/2;
-			uint i2 = i + g;
+			if (i2 == i) continue;
 			for (uint j=0; j<3; j++)
 			{
 				for (uint j2=0; j2<3; j2++)
@@ -88,14 +86,18 @@ std::vector<family_member> get_family(family_member my_family_member, CKMCFile *
 {
 	uint64 candidate_counter;
 	std::vector<family_member> family;
-	std::set<CKmerAPI_Derived> family_objects;
+	//std::unordered_set<CKmerAPI_Derived, MyHashFunction> family_objects;
+	std::unordered_set<std::string> family_strings;
 	std::queue<CKmerAPI_Derived> Q;
 	CKmerAPI_Derived kmer_object = my_family_member.kmer_object;
-	family_objects.insert(kmer_object);
+	std::string family_string;
+	kmer_object.to_string(family_string);
+	//family_objects.insert(kmer_object);
+	family_strings.insert(family_string);
 	family.push_back(my_family_member);
 	Q.push(kmer_object);
-	std::string my_family_member_kmer;
-	my_family_member.kmer_object.to_string(my_family_member_kmer);
+	//std::string my_family_member_kmer;
+	//my_family_member.kmer_object.to_string(my_family_member_kmer);
 	while (!Q.empty())
 	{
 		kmer_object = Q.front();
@@ -108,10 +110,10 @@ std::vector<family_member> get_family(family_member my_family_member, CKMCFile *
 			//If the candidate kmer is later in the alphabet than the original family member and it is not yet in family and it is in the database
 			//Actually, the check for candidate kmer later in the alphabet than original is superfluous. If we correctly track visited members we will never run into this case
 			//(kmer_candidate.compare(my_family_member_kmer) > 0) && 
-			if ((family_objects.find(kmer_candidate_object) == family_objects.end()) && database->CheckKmer(kmer_candidate_object, candidate_counter))
+			if ((family_strings.find(kmer_candidate) == family_strings.end()) && database->CheckKmer(kmer_candidate_object, candidate_counter))
 			{
 				//add candidate kmer to the family, and to the queue
-				family_objects.insert(kmer_candidate_object);
+				family_strings.insert(kmer_candidate);
 				family_member candidate_family_member = {kmer_candidate_object, candidate_counter};
 				family.push_back(candidate_family_member);
 				Q.push(kmer_candidate_object);
@@ -236,15 +238,16 @@ int _tmain(int argc, char* argv[])
 		else
 		{
 			uint64 counter;
-			std::set<family_member> visited_members;
+			//std::unordered_set<family_member> visited_members;
+			std::unordered_set<std::string> visited_members;
 			std::vector<family_member> family;
 			while (kmer_data_base_listing.ReadNextKmer(kmer_object, counter))
 			{
-				//std::string kmer_test;
-				//kmer_object.to_string(kmer_test);
-				//std::cout << kmer_test << "\n";
+				std::string kmer_string;
+				kmer_object.to_string(kmer_string);
 				family_member my_family_member = {kmer_object, counter};
-				std::set<family_member>::iterator it = visited_members.find(my_family_member);
+				//std::unordered_set<family_member>::iterator it = visited_members.find(my_family_member);
+				std::unordered_set<std::string>::iterator it = visited_members.find(kmer_string);
 				//If this kmer has not been visited
 				if (it == visited_members.end())
 				{
@@ -256,7 +259,13 @@ int _tmain(int argc, char* argv[])
 					if (family.size() >= 2) // changed from > to >=
 					{
 						//add family members to visited, except the original which we shouldn't see again
-						visited_members.insert(family.begin()+1, family.end()); //added +1
+						//visited_members.insert(family.begin()+1, family.end()); //added +1
+						for (auto it = std::begin(family)+1; it != std::end(family); ++it)
+						{
+							std::string visited_string;
+							(*it).kmer_object.to_string(visited_string);
+							visited_members.insert(visited_string);
+						}
 					}
 					//if ((family.size() == 2) && (20 <= (family.at(0)).counter) && ((family.at(0)).counter <= 50) && (20 <= (family.at(1)).counter) && ((family.at(1)).counter <= 50))
 					if ((family.size() == 2))
