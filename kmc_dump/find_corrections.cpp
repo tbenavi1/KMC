@@ -73,7 +73,6 @@ public:
 //		std::vector<CKmerAPI_Derived> candidates;
 //		std::string original_str;
 //		this->to_string(original_str);
-//		//std::string nucleotides = "ACGT";
 //		std::map<char, std::string> replacements;
 //		replacements['A']="CGT";
 //		replacements['C']="AGT";
@@ -134,47 +133,22 @@ struct family_member
 	uint64 counter;
 };
 
-bool operator <(const family_member& x, const family_member& y)
-{
-	return x.kmer_object < y.kmer_object;
-}
-
-
-std::vector<family_member> get_family(family_member my_family_member, CKMCFile *database)
+std::vector<family_member> get_corrections(family_member my_family_member, CKMCFile *database)
 {
 	uint64 candidate_counter;
-	std::vector<family_member> family;
-	std::set<CKmerAPI_Derived> family_objects;
-	std::queue<CKmerAPI_Derived> Q;
+	std::vector<family_member> corrections;
 	CKmerAPI_Derived kmer_object = my_family_member.kmer_object;
-	family_objects.insert(kmer_object);
-	family.push_back(my_family_member);
-	Q.push(kmer_object);
-	std::string my_family_member_kmer;
-	my_family_member.kmer_object.to_string(my_family_member_kmer);
-	while (!Q.empty())
+	//For each candidate kmer within the edit distance from the error kmer
+	for (CKmerAPI_Derived kmer_candidate_object : kmer_object.CandidateKmers())
 	{
-		kmer_object = Q.front();
-		Q.pop();
-		//For each candidate kmer
-		for (CKmerAPI_Derived kmer_candidate_object : kmer_object.CandidateKmers())
+		//If the candidate kmer is in the database of genomic kmers (and set its counter to candidate_counter)
+		if (database->CheckKmer(kmer_candidate_object, candidate_counter))
 		{
-			std::string kmer_candidate;
-			kmer_candidate_object.to_string(kmer_candidate);
-			//If the candidate kmer is later in the alphabet than the original family member and it is not yet in family and it is in the database
-			//Actually, the check for candidate kmer later in the alphabet than original is superfluous. If we correctly track visited members we will never run into this case
-			//(kmer_candidate.compare(my_family_member_kmer) > 0) && 
-			if ((family_objects.find(kmer_candidate_object) == family_objects.end()) && database->CheckKmer(kmer_candidate_object, candidate_counter))
-			{
-				//add candidate kmer to the family, and to the queue
-				family_objects.insert(kmer_candidate_object);
-				family_member candidate_family_member = {kmer_candidate_object, candidate_counter};
-				family.push_back(candidate_family_member);
-				Q.push(kmer_candidate_object);
-			}
+			family_member candidate_family_member = {kmer_candidate_object, candidate_counter};
+			corrections.push_back(candidate_family_member);
 		}
 	}
-	return family;
+	return corrections;
 }
 
 int _tmain(int argc, char* argv[])
@@ -185,11 +159,10 @@ int _tmain(int argc, char* argv[])
 	uint32 min_count_to_set = 0;
 	uint32 max_count_to_set = 0;
 	std::string input_file_name;
+	std::string input_file_name2;
 	std::string output_file_name;
-	std::string output_file_name2;
 
 	FILE * out_file;
-	FILE * out_file2;
 	//------------------------------------------------------------
 	// Parse input parameters
 	//------------------------------------------------------------
@@ -217,22 +190,15 @@ int _tmain(int argc, char* argv[])
 	}
 
 	input_file_name = std::string(argv[i++]);
-	output_file_name = std::string(argv[i++]);
-	output_file_name2 = std::string(argv[i]);
+	input_file_name2 = std::string(argv[i++]);
+	output_file_name = std::string(argv[i]);
 
 	if((out_file = fopen (output_file_name.c_str(),"wb")) == NULL)
 	{
 		return EXIT_FAILURE;
 	}
 
-	if((out_file2 = fopen (output_file_name2.c_str(),"wb")) == NULL)
-	{
-		return EXIT_FAILURE;
-	}
-
-
 	setvbuf(out_file, NULL ,_IOFBF, 1 << 24);
-	setvbuf(out_file2, NULL ,_IOFBF, 1 << 24);
 
 	//------------------------------------------------------------------------------
 	// Open kmer database for listing and print kmers within min_count and max_count
@@ -242,7 +208,7 @@ int _tmain(int argc, char* argv[])
 	{
 		return EXIT_FAILURE ;
 	}
-	else if (!kmer_data_base_RA.OpenForRA(input_file_name))
+	else if (!kmer_data_base_RA.OpenForRA(input_file_name2))
 	{
 		return EXIT_FAILURE ;
 	}
@@ -262,7 +228,7 @@ int _tmain(int argc, char* argv[])
 		char str[1024];
 		uint32 counter_len;
 		
-		CKmerAPI_Derived kmer_object(_kmer_length);
+		CKmerAPI_Derived err_object(_kmer_length);
 		
 		if(min_count_to_set)
 		if (!(kmer_data_base_listing.SetMinCount(min_count_to_set)))
@@ -280,9 +246,9 @@ int _tmain(int argc, char* argv[])
 		if (_mode) //quake compatible mode
 		{
 			float counter;
-			while (kmer_data_base_listing.ReadNextKmer(kmer_object, counter))
+			while (kmer_data_base_listing.ReadNextKmer(err_object, counter))
 			{
-				kmer_object.to_string(str);
+				err_object.to_string(str);
 				str[_kmer_length] = '\t';
 				counter_len = CNumericConversions::Double2PChar(counter, 6, (uchar*)str + _kmer_length + 1);				
 				str[_kmer_length + 1 + counter_len] = '\n';
@@ -291,53 +257,25 @@ int _tmain(int argc, char* argv[])
 		}
 		else
 		{
-			uint64 counter;
-			std::set<family_member> visited_members;
-			std::vector<family_member> family;
-			while (kmer_data_base_listing.ReadNextKmer(kmer_object, counter))
+			uint64 err_counter;
+			std::vector<family_member> corrections;
+			while (kmer_data_base_listing.ReadNextKmer(err_object, err_counter))
 			{
-				//std::string kmer_test;
-				//kmer_object.to_string(kmer_test);
-				//std::cout << kmer_test << "\n";
-				family_member my_family_member = {kmer_object, counter};
-				std::set<family_member>::iterator it = visited_members.find(my_family_member);
-				//If this kmer has not been visited
-				if (it == visited_members.end())
+				family_member my_family_member = {err_object, err_counter};
+				corrections = get_corrections(my_family_member, &kmer_data_base_RA);
+				if (corrections.size() >= 1)
 				{
-					//get the family (connected component) of this kmer
-					family = get_family(my_family_member, &kmer_data_base_RA);
-					std::string kmer_str;
-					kmer_object.to_string(kmer_str);
-					std::cout << family.size() << "\n";
-					if (family.size() >= 2) // changed from > to >=
-					{
-						//add family members to visited, except the original which we shouldn't see again
-						visited_members.insert(family.begin()+1, family.end()); //added +1
-					}
-					//if ((family.size() == 2) && (20 <= (family.at(0)).counter) && ((family.at(0)).counter <= 50) && (20 <= (family.at(1)).counter) && ((family.at(1)).counter <= 50))
-					if ((family.size() == 2))
-					{
-						std::sort(family.begin(), family.end(), [](family_member f1, family_member f2) {return f1.counter < f2.counter;});
-						std::string line1;
-						std::string line2;
-						line1.append(std::to_string((family.at(0)).counter) + "\t" + std::to_string((family.at(1)).counter));
-						std::string kmer_str1;
-						std::string kmer_str2;
-						(family.at(0)).kmer_object.to_string(kmer_str1);
-						(family.at(1)).kmer_object.to_string(kmer_str2);
-						line2.append(kmer_str1 + "\t" + kmer_str2);
-						line1.append("\n");
-						line2.append("\n");
-						const char *c = line1.c_str();
-						const char *c2 = line2.c_str();
-						fprintf(out_file, "%s", c);
-						fprintf(out_file2, "%s", c2);
-					}
-				}
-				//if the kmer has been visited
-				else
-				{
-					visited_members.erase(it);
+					std::string err_str;
+					err_object.to_string(err_str);
+					CKmerAPI_Derived correction;
+					std::sort(corrections.begin(), corrections.end(), [](family_member f1, family_member f2) {return f1.counter > f2.counter;});
+					correction = (corrections.at(0)).kmer_object;
+					std::string corr_str;
+					correction.to_string(corr_str);
+					std::string line;
+					line.append(err_str + "\t" + corr_str + "\n");
+					const char *c = line.c_str();
+					fprintf(out_file, "%s", c);
 				}
 			}
 		}

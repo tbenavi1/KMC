@@ -111,6 +111,11 @@ bool CFastqFilter::FilterRead()
 
 	kmc_api.GetCountersForRead(read, counters);
 	uint32 valid_kmers = 0;
+	for (int i=0; i < counters.size(); i++) {
+		//std::cout << counters.at(i) << ' ';
+		std::cout << counters.at(i) << '\n';
+	}
+	//std::cout << "\n";
 	for (auto counter : counters)
 	if (counter)
 		++valid_kmers;
