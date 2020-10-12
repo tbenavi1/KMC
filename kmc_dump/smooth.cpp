@@ -1,15 +1,14 @@
-#include "stdafx.h"
-#include <iostream>
-#include "./../kmc_api/kmer_api.h"
 #include "./../kmc_api/kmc_file.h"
+#include "./../kmc_api/kmer_api.h"
 #include "nc_utils.h"
-#include <list>
-#include <vector>
-#include <math.h>
-#include <fstream>
+#include "stdafx.h"
 #include <algorithm>
-#include <exception>
+#include <fstream>
+#include <iostream>
+#include <list>
+#include <math.h>
 #include <numeric>
+#include <vector>
 
 int get_type(uint32_t& coverage, int& error_threshold, int& het_threshold, int& unique_threshold)
 {
@@ -60,12 +59,36 @@ std::vector<std::string> get_adjacent(CKMCFile& file, std::string& kmer, int& er
 
 std::vector<std::string> get_paths(CKMCFile& file, int& error_threshold, int& het_threshold, int& unique_threshold, std::string& left_anchor_kmer, std::string& right_anchor_kmer, int& min_distance_of_path, int& max_distance_of_path, int& max_nodes_to_search, int& k, bool& queue_broken)
 {
-	//This function finds paths starting from left_anchor_kmer and ending at
-	//right_anchor_kmer where each kmer in the path is a nonerror kmer.
-	//We follow all paths, but cut the depth of any path to max_distance_of_path.
+	std::string starting_anchor_kmer;
+	bool going_right;
+	if (left_anchor_kmer.empty())
+	{
+		//We are at the beginning of the read.
+		//This function will find paths starting from right_anchor_kmer continuing left to the
+		//beginning of the read where each kmer in the path is a nonerror kmer.
+		starting_anchor_kmer = right_anchor_kmer;
+		going_right = false;
+	}
+	else if (right_anchor_kmer.empty())
+	{
+		//We are at the end of the read.
+		//This function will find paths starting from left_anchor_kmer continuing right to the
+		//end of the read where each kmer in the path is a nonerror kmer.
+		starting_anchor_kmer = left_anchor_kmer;
+		going_right = true;
+	}
+	else
+	{
+		//We are in the middle of the read.
+		//This function will find paths starting from left_anchor_kmer continuing right until
+		//right_anchor_kmer where each kmer in the path is a nonerror kmer.
+		starting_anchor_kmer = left_anchor_kmer;
+		going_right = true;
+	}
+	//In every case, we follow all paths, but cut the depth of any path to max_distance_of_path.
 	//We also ensure a minimum depth equal to min_distance_of_path.
 	std::list<std::string> queue;
-	queue.push_back(left_anchor_kmer);
+	queue.push_back(starting_anchor_kmer);
 	//Initialize paths to store all the paths that are found.
 	std::vector<std::string> paths;
 	//We use i as a counter for how many nodes have been visited in the search.
@@ -81,7 +104,15 @@ std::vector<std::string> get_paths(CKMCFile& file, int& error_threshold, int& he
 	{
 		i++;
 		std::string current_path = queue.front();
-		std::string current_kmer = current_path.substr(current_path.length()-k);
+		std::string current_kmer;
+		if (going_right)
+		{
+			current_kmer = current_path.substr(current_path.length()-k);
+		}
+		else
+		{
+			current_kmer = current_path.substr(0, k);
+		}
 		queue.pop_front();
 		int current_depth = current_path.length()-k;
 		//If we have to terminate search early
@@ -95,18 +126,45 @@ std::vector<std::string> get_paths(CKMCFile& file, int& error_threshold, int& he
 		if (current_depth <= max_distance_of_path)
 		{
 			//Extend the path by one nucleotide, keep the ones that are not error kmers
-			bool going_right = true;
 			std::vector<std::string> adjacent_kmers = get_adjacent(file, current_kmer, error_threshold, het_threshold, unique_threshold, going_right);
 			for (auto adjacent_kmer : adjacent_kmers)
 			{
-				std::string path = current_path + adjacent_kmer.back();
-				//If we have found a path of nonerror kmers which bridges the anchor kmers
-				//and doesn't terminate too early (i.e. before min_distance_of_path)
-				if ((adjacent_kmer == right_anchor_kmer) && (current_depth + 1 >= min_distance_of_path))
+				std::string path;
+				if (going_right)
 				{
-					path.erase(path.end()-k, path.end());
-					path.erase(path.begin(), path.begin()+k);
-					//paths.push_back(path.substr(1));
+					path = current_path + adjacent_kmer.back();
+				}
+				else
+				{
+					path = adjacent_kmer.front() + current_path;
+				}
+				bool end_condition;
+				//If we are in the middle of the read, we end when we have found a path
+				//of nonerror kmers which bridges the anchor kmers
+				//and doesn't terminate too early (i.e. before min_distance_of_path)
+				if (!left_anchor_kmer.empty() && !right_anchor_kmer.empty())
+				{
+					end_condition = ((adjacent_kmer == right_anchor_kmer) && (current_depth + 1 >= min_distance_of_path));
+				}
+				//If we are at either end of the read, we end when we have found a path
+				//of nonerror kmers which continues until the end of the read
+				//and doesn't terminate too early (i.e. before min_distance_of_path)
+				else
+				{
+					end_condition = ((current_depth + 1 == max_distance_of_path) && (current_depth + 1 >= min_distance_of_path));
+				}
+				if (end_condition)
+				{
+					if (!left_anchor_kmer.empty())
+					{
+						//remove left_anchor_kmer from path
+						path.erase(path.begin(), path.begin()+k);
+					}
+					if (!right_anchor_kmer.empty())
+					{
+						//remove right_anchor_kmer from path
+						path.erase(path.end()-k, path.end());
+					}
 					paths.push_back(path);
 				}
 				//Else we haven't found a path yet
@@ -182,386 +240,6 @@ std::vector<std::string> get_paths_het(CKMCFile& file, int& error_threshold, int
 	return paths;
 }
 
-std::vector<std::string> get_paths_left(CKMCFile& file, int& error_threshold, int& het_threshold, int& unique_threshold, std::string& right_anchor_kmer, int& min_distance_of_path, int& max_distance_of_path, int& max_nodes_to_search, int& k, bool& queue_broken)
-{
-	//This function finds paths starting from right_anchor_kmer and
-	//going to the left where each kmer in the path is a nonerror kmer.
-	//We follow all paths, but cut the depth of any path to max_distance_of_path.
-	//We also ensure a minimum depth equal to min_distance_of_path.
-	std::list<std::string> queue;
-	queue.push_back(right_anchor_kmer);
-	//Initialize paths to store all the paths that are found.
-	std::vector<std::string> paths;
-	//We use i as a counter for how many nodes have been visited in the search.
-	//If we haven't finished the search within max_nodes_to_search nodes, 
-	//we break the search.
-	//This drastically speeds up the run time for some regions.
-	//Thankfully, it doesn't seem to impact effectiveness, since most searches
-	//complete before this threshold.
-	int i = 0;
-	//This flag keeps track of whether we had to stop the search early.
-	queue_broken = false;
-	while(!queue.empty())
-	{
-		i++;
-		std::string current_path = queue.front();
-		//std::string current_kmer = current_path.substr(current_path.length()-k);
-		std::string current_kmer = current_path.substr(0, k);
-		queue.pop_front();
-		int current_depth = current_path.length()-k;
-		//If we have to terminate search early
-		if (i > max_nodes_to_search)
-		{
-			//std::cout << "queue broken" << '\n';
-			queue_broken = true;
-			break;
-		}
-		//If the depth of this node hasn't exceeded the max distance of the path
-		if (current_depth <= max_distance_of_path)
-		{
-			//Extend the path by one nucleotide, keep the ones that are not error kmers
-			bool going_right = false;
-			std::vector<std::string> adjacent_kmers = get_adjacent(file, current_kmer, error_threshold, het_threshold, unique_threshold, going_right);
-			for (auto adjacent_kmer : adjacent_kmers)
-			{
-				//std::string path = current_path + adjacent_kmer.back();
-				std::string path = adjacent_kmer.front() + current_path;
-				//std::cout << path << '\n';
-				//If we have found a path of nonerror kmers which bridges the anchor kmers
-				//and doesn't terminate too early (i.e. before min_distance_of_path)
-				//if ((adjacent_kmer == right_anchor_kmer) && (current_depth + 1 >= min_distance_of_path))
-				if ((current_depth + 1 == max_distance_of_path) && (current_depth + 1 >= min_distance_of_path))
-				{
-					path.erase(path.end()-k, path.end());
-					//path.erase(path.begin(), path.begin()+k);
-					//paths.push_back(path.substr(1));
-					//path.pop_back();
-					paths.push_back(path);
-				}
-				//Else we haven't found a path yet
-				else
-				{
-					queue.push_back(path);
-				}
-			}
-		}
-	}
-	return paths;
-}
-
-std::vector<std::string> get_paths_right(CKMCFile& file, int& error_threshold, int& het_threshold, int& unique_threshold, std::string& left_anchor_kmer, int& min_distance_of_path, int& max_distance_of_path, int& max_nodes_to_search, int& k, bool& queue_broken)
-{
-	//This function finds paths starting from left_anchor_kmer and
-	//going to the right where each kmer in the path is a nonerror kmer.
-	//We follow all paths, but cut the depth of any path to max_distance_of_path.
-	//We also ensure a minimum depth equal to min_distance_of_path.
-	std::list<std::string> queue;
-	queue.push_back(left_anchor_kmer);
-	//Initialize paths to store all the paths that are found.
-	std::vector<std::string> paths;
-	//We use i as a counter for how many nodes have been visited in the search.
-	//If we haven't finished the search within max_nodes_to_search nodes, 
-	//we break the search.
-	//This drastically speeds up the run time for some regions.
-	//Thankfully, it doesn't seem to impact effectiveness, since most searches
-	//complete before this threshold.
-	int i = 0;
-	//This flag keeps track of whether we had to stop the search early.
-	queue_broken = false;
-	while(!queue.empty())
-	{
-		i++;
-		std::string current_path = queue.front();
-		std::string current_kmer = current_path.substr(current_path.length()-k);
-		//std::string current_kmer = current_path.substr(0, k);
-		queue.pop_front();
-		int current_depth = current_path.length()-k;
-		//If we have to terminate search early
-		if (i > max_nodes_to_search)
-		{
-			//std::cout << "queue broken" << '\n';
-			queue_broken = true;
-			break;
-		}
-		//If the depth of this node hasn't exceeded the max distance of the path
-		if (current_depth <= max_distance_of_path)
-		{
-			//Extend the path by one nucleotide, keep the ones that are not error kmers
-			bool going_right = true;
-			std::vector<std::string> adjacent_kmers = get_adjacent(file, current_kmer, error_threshold, het_threshold, unique_threshold, going_right);
-			for (auto adjacent_kmer : adjacent_kmers)
-			{
-				std::string path = current_path + adjacent_kmer.back();
-				//std::string path = adjacent_kmer.front() + current_path;
-				//std::cout << path << '\n';
-				//If we have found a path of nonerror kmers which bridges the anchor kmers
-				//and doesn't terminate too early (i.e. before min_distance_of_path)
-				//if ((adjacent_kmer == right_anchor_kmer) && (current_depth + 1 >= min_distance_of_path))
-				if ((current_depth + 1 == max_distance_of_path) && (current_depth + 1 >= min_distance_of_path))
-				{
-					//path.erase(path.end()-k, path.end());
-					path.erase(path.begin(), path.begin()+k);
-					//paths.push_back(path.substr(1));
-					//path.pop_back();
-					paths.push_back(path);
-				}
-				//Else we haven't found a path yet
-				else
-				{
-					queue.push_back(path);
-				}
-			}
-		}
-	}
-	return paths;
-}
-
-std::string extend_left_unique(std::string& beginning_portion, int& i, int& k, int& error_threshold, int& het_threshold, int& unique_threshold, CKMCFile& file, int& read_number)
-{
-	std::string extension;
-	//The beginning portion should be of length i+k
-	std::string kmer = beginning_portion.substr(i);
-	std::vector<uint32_t> v;
-	int j = 0;
-	while (j < i)
-	{
-		bool found_path = false;
-		std::string new_kmer;
-		for (char const &c: "ACGT")
-		{
-			std::string adjacent_kmer = c+kmer.substr(0, k-1);
-			file.GetCountersForRead(adjacent_kmer, v);
-			int current_type = get_type(v[0], error_threshold, het_threshold, unique_threshold);
-			//if the adjacent kmer is not an error
-			if (current_type > 0)
-			{
-				//we terminate at a branching path
-				if (found_path)
-				{
-					j--;
-					//remove the previous character we added
-					extension = extension.substr(1);
-					extension = beginning_portion.substr(0, i-j) + extension;
-					return extension;
-				}
-				else
-				{
-					found_path = true;
-					j++;
-					new_kmer = adjacent_kmer;
-					extension = c+extension;
-				}
-			}
-		}
-		//we terminate at no paths
-		if (!found_path)
-		{
-			extension = beginning_portion.substr(0, i-j) + extension;
-			return extension;
-		}
-		kmer = new_kmer;
-	}
-	//we terminate at the end of the read
-	return extension;
-}
-
-std::string extend_right_unique(std::string& ending_portion, int& i, int& k, int& error_threshold, int& het_threshold, int& unique_threshold, CKMCFile& file, int& read_number)
-{
-	std::string extension;
-	//The ending portion should be of length k+(read_length-first_error_idx-k+1)
-	std::string kmer = ending_portion.substr(0, k);
-	std::vector<uint32_t> v;
-	int j = 0;
-	while (j < i)
-	{
-		bool found_path = false;
-		std::string new_kmer;
-		for (char const &c: "ACGT")
-		{
-			std::string adjacent_kmer = kmer.substr(1)+c;
-			file.GetCountersForRead(adjacent_kmer, v);
-			int current_type = get_type(v[0], error_threshold, het_threshold, unique_threshold);
-			//if the adjacent kmer is not an error
-			if (current_type > 0)
-			{
-				//we terminate at a branching path
-				if (found_path)
-				{
-					j--;
-					//remove the previous character we added
-					extension.pop_back();
-					extension = extension + ending_portion.substr(j+k);
-					return extension;
-				}
-				else
-				{
-					found_path = true;
-					j++;
-					new_kmer = adjacent_kmer;
-					extension = extension+c;
-				}
-			}
-		}
-		//we terminate at no paths
-		if (!found_path)
-		{
-			extension = extension + ending_portion.substr(j+k);
-			return extension;
-		}
-		kmer = new_kmer;
-	}
-	//we terminate at the end of the read
-	return extension;
-}
-
-//std::vector<std::string> extend_left_het(std::string& beginning_portion, int& i, int& k, int& error_threshold, int& het_threshold, int& unique_threshold, CKMCFile& file, int& read_number)
-//{
-//	std::vector<std::string> extensions;
-//	//The beginning portion should be of length i+k
-//	std::string kmer1 = beginning_portion.substr(i);
-//	std::string kmer2 = beginning_portion.substr(i);
-//	std::vector<uint32_t> v1;
-//	std::vector<uint32_t> v2;
-//	int j = 0;
-//	bool found_branch = false;
-//	while (j < i)
-//	{
-//		//we are before the branch
-//		if (!found_branch)
-//		{
-//			//bool found_path = false;
-//			int num_paths_found = 0;
-//			//std::string new_kmer;
-//			std::string new_kmer1;
-//			//std::string new_kmer2;
-//			for (char const &c: "ACGT")
-//			{
-//				std::string adjacent_kmer1 = c+kmer1.substr(0, k-1);
-//				//std::string adjacent_kmer2 = c+kmer.substr(0, k-1);
-//				file.GetCountersForRead(adjacent_kmer1, v1);
-//				//file.GetCountersForRead(adjacent_kmer2, v2);
-//				int current_type1 = get_type(v1[0], error_threshold, het_threshold, unique_threshold);
-//				//int current_type2 = get_type(v2[0], error_threshold, het_threshold, unique_threshold);
-//				//if the adjacent kmer is not an error
-//				if (current_type1 > 0)
-//				{
-//					num_paths_found++;
-//					if (num_paths_found == 1)
-//					{
-//						j++;
-//						new_kmer1 = adjacent_kmer1;
-//						new_kmer2 = adjacent_kmer1;
-//						//extension = c+extension;
-//						extensions[0] = c + extensions[0];
-//						extensions[1] = c + extensions[1];
-//					}
-//					if (num_paths_found == 2)
-//					{
-//						//j--;
-//						//remove the previous character we added
-//						//extension = extension.substr(1);
-//						//extension = beginning_portion.substr(0, i-j) + extension;
-//						new_kmer2 = adjacent_kmer1;
-//						extensions[1] = extensions[1].substr(1);
-//						extensions[1] = c + extensions[1];
-//						found_branch = true;
-//						//extensions[1] = beginning_portion.substr(0, i-j) + extensions[1];
-//						//std::cout << "we terminate at a branching path" << '\n';
-//						//return extension;
-//					}
-//					//We terminate since there are too many paths
-//					//return the original sequence, with correct length
-//					if (num_paths_found > 2)
-//					{
-//						extensions[0] = beginning_portion.substr(0, i);
-//						extensions[1] = beginning_portion.substr(0, i);
-//						return extensions;
-//					}
-//				}
-//			}
-//			//we terminate at no paths
-//			if (num_paths_found == 0)
-//			{
-//				//extension = beginning_portion.substr(0, i-j) + extension;
-//				extensions[0] = beginning_portion.substr(0, i);
-//				extensions[1] = beginning_portion.substr(0, i);
-//				//std::cout << "we terminate at no paths" << '\n';
-//				return extensions;
-//			}
-//			kmer1 = new_kmer1;
-//			kmer2 = new_kmer2;
-//		}
-//		//we are after the branch
-//		else
-//		{
-//			if (j > 1)
-//			{
-//				std::cout << "the branch was not the first position, j: " << j << '\n';
-//			}
-//			int num_paths_found = 0;
-//			
-//		}
-//	}
-//	//we terminate at the end of the read
-//	//std::cout << "we terminate at the end of the read" << '\n';
-//	return extensions;
-//}
-//
-//std::vector<std::string> extend_right_het(std::string& ending_portion, int& i, int& k, int& error_threshold, int& het_threshold, int& unique_threshold, CKMCFile& file, int& read_number)
-//{
-//	std::vector<std::string> extensions;
-//	//The ending portion should be of length k+(read_length-first_error_idx-k+1)
-//	std::string kmer = ending_portion.substr(0, k);
-//	std::vector<uint32_t> v;
-//	int j = 0;
-//	while (j < i)
-//	{
-//		bool found_path = false;
-//		std::string new_kmer;
-//		for (char const &c: "ACGT")
-//		{
-//			std::string adjacent_kmer = kmer.substr(1)+c;
-//			file.GetCountersForRead(adjacent_kmer, v);
-//			int current_type = get_type(v[0], error_threshold, het_threshold, unique_threshold);
-//			//if the adjacent kmer is not an error
-//			if (current_type > 0)
-//			{
-//				//we terminate at a branching path
-//				if (found_path)
-//				{
-//					j--;
-//					//remove the previous character we added
-//					//extension = extension.substr(1);
-//					extension.pop_back();
-//					//extension = beginning_portion.substr(0, i-j) + extension;
-//					//std::cout << extension << '\n';
-//					//std::cout << ending_portion.substr(j+k) << '\n';
-//					extension = extension + ending_portion.substr(j+k);
-//					//std::cout << "we terminate at a branching path" << '\n';
-//					return extension;
-//				}
-//				else
-//				{
-//					found_path = true;
-//					j++;
-//					new_kmer = adjacent_kmer;
-//					//extension = c+extension;
-//					extension = extension+c;
-//				}
-//			}
-//		}
-//		//we terminate at no paths
-//		if (!found_path)
-//		{
-//			//extension = beginning_portion.substr(0, i-j) + extension;
-//			//std::cout << extension << '\n';
-//			//std::cout << ending_portion.substr(j+k) << '\n';
-//			extension = extension + ending_portion.substr(j+k);
-//			//std::cout << "we terminate at no paths" << '\n';
-//			return extension;
-//		}
-//}
-
 std::vector<std::string> extend_left_het(std::string& beginning_portion, int& i, int& k, int& error_threshold, int& het_threshold, int& unique_threshold, CKMCFile& file, int& read_number)
 {
 	std::vector<std::string> extensions;
@@ -596,7 +274,6 @@ void write_error_paths(bool& queue_broken, std::vector<std::string>& edited_erro
 	//we finished the search and presumably we have found one homozygous path or two heterozygous paths
 	if ((!queue_broken) && ((edited_error_portions.size() == 1) or (edited_error_portions.size() == 2)))
 	{
-		//std::cout << "hi" << '\n';
 		errwrite_output_file = &erredits_output_file;
 		if (!before_first_error_kmer.empty())
 		{
@@ -611,7 +288,6 @@ void write_error_paths(bool& queue_broken, std::vector<std::string>& edited_erro
 	//We are currently not editing.
 	else
 	{
-		//std::cout << "read " << read_number << "does not have 1 or two error paths" << '\n';
 		errwrite_output_file = &errpaths_output_file;
 		if (!before_first_error_kmer.empty())
 		{
@@ -707,63 +383,16 @@ std::string remove_err (std::vector<uint32_t>& v, std::string& read, int& read_n
 			if (previous_type == 0 && before_first_error_kmer.empty())
 			{
 				//The very beginning of the read is an error portion
-				//last_error_idx = i-1;
-				//first_nonerror_idx = i;
-				//after_last_error_kmer = read.substr(i, k);
-				//std::string original_error_portion = read.substr(0, i);
-				//std::string original_error_block = original_error_portion + after_last_error_kmer;
-				//std::string right_anchor_kmer = read.substr(i, k);
-				//before_first_error_kmer = "";
 				after_last_error_kmer = read.substr(i, k);
 				int min_distance_of_path = 0;
 				int max_distance_of_path = i;
 				int max_nodes_to_search = 1000;
 				bool queue_broken = false;
-				std::vector<std::string> edited_error_portions = get_paths_left(file, error_threshold, het_threshold, unique_threshold, after_last_error_kmer, min_distance_of_path, max_distance_of_path, max_nodes_to_search, k, queue_broken);
+				std::vector<std::string> edited_error_portions = get_paths(file, error_threshold, het_threshold, unique_threshold, before_first_error_kmer, after_last_error_kmer, min_distance_of_path, max_distance_of_path, max_nodes_to_search, k, queue_broken);
 				last_error_idx = i-1;
 				first_nonerror_idx = i;
-				//after_last_error_kmer = read.substr(i, k);
 				std::string original_error_portion = read.substr(0, i);
-				//std::string original_error_block = original_error_portion + after_last_error_kmer;
 				write_error_paths(queue_broken, edited_error_portions, erredits_output_file, errpaths_output_file, edited_read, read_number, first_error_idx, last_error_idx, before_first_error_kmer, original_error_portion, after_last_error_kmer, file);
-//				std::ofstream* err_output_file;
-//				//we finished the search and presumably we have found one homozygous path or two heterozygous paths
-//				if ((!queue_broken) && ((edited_error_portions.size() == 1) or (edited_error_portions.size() == 2)))
-//				{
-//					//std::cout << "hi" << '\n';
-//					err_output_file = &erredits_output_file;
-//					edited_read += edited_error_portions[0];
-//				}
-//				//there are no paths, or there are more than two paths, or the search wasn't finished.
-//				//We are currently not editing.
-//				else
-//				{
-//					//std::cout << "read " << read_number << "does not have 1 or two error paths" << '\n';
-//					err_output_file = &errpaths_output_file;
-//					edited_read += original_error_portion;
-//				}
-//				*err_output_file << ">read" << read_number << "_firsterrorkmer" << first_error_idx << "_lasterrorkmer" << last_error_idx << "_original" << '\n';
-//				*err_output_file << " " << original_error_portion << " " << after_last_error_kmer << '\n';
-//				std::vector<uint32_t> w;
-//				file.GetCountersForRead(original_error_block, w);
-//				for (int j=0; j < w.size(); j++)
-//				{
-//					*err_output_file << w.at(j) << " ";
-//				}
-//				*err_output_file << '\n';
-//				for (int l = 0; l < edited_error_portions.size(); l++)
-//				{
-//					std::string edited_error_portion = edited_error_portions[l];
-//					std::string edited_error_block = edited_error_portion + after_last_error_kmer;
-//					*err_output_file << ">read" << read_number << "_firsterrorkmer" << first_error_idx << "_lasterrorkmer" << last_error_idx << "_edited" << l << '\n';
-//					*err_output_file << " " << edited_error_portion << " " << after_last_error_kmer << '\n';
-//					file.GetCountersForRead(edited_error_block, w);
-//					for (int j=0; j < w.size(); j++)
-//					{
-//						*err_output_file << w.at(j) << " ";
-//					}
-//					*err_output_file << '\n';
-//				}
 			}
 			//if previous kmer was error, we have left the error block
 			if (previous_type == 0 && !before_first_error_kmer.empty())
@@ -787,86 +416,6 @@ std::string remove_err (std::vector<uint32_t>& v, std::string& read, int& read_n
 				first_nonerror_idx = i;
 				std::string original_error_portion = read.substr(first_error_idx+k-1, last_error_idx - first_error_idx + 2 - k);
 				write_error_paths(queue_broken, edited_paths, erredits_output_file, errpaths_output_file, edited_read, read_number, first_error_idx, last_error_idx, before_first_error_kmer, original_error_portion, after_last_error_kmer, file);
-//				//Only edit if we fully traveled all of the paths (with depth between min and max distance)
-//				//and there exists only exactly one path that bridges the gap
-//				if (!queue_broken && edited_paths.size() == 1)
-//				{
-//					std::string original_error_portion = read.substr(first_error_idx+k-1, last_error_idx - first_error_idx + 2 - k);
-//					std::string original_error_block = before_first_error_kmer + original_error_portion + after_last_error_kmer;
-//					erredits_output_file << ">read" << read_number << "_firsterrorkmer" << first_error_idx << "_lasterrorkmer" << last_error_idx << "_original" << '\n';
-//					erredits_output_file << before_first_error_kmer << " " << original_error_portion << " " << after_last_error_kmer << '\n';
-//					std::vector<uint32_t> w;
-//					file.GetCountersForRead(original_error_block, w);
-//					for (int j=0; j < w.size(); j++)
-//					{
-//						erredits_output_file << w.at(j) << " ";
-//					}
-//					erredits_output_file << '\n';
-//					std::string edited_error_portion = edited_paths[0].substr(k-1);
-//					std::string edited_error_block = before_first_error_kmer + edited_error_portion + after_last_error_kmer;
-//					erredits_output_file << ">read" << read_number << "_firsterrorkmer" << first_error_idx << "_lasterrorkmer" << last_error_idx << "_edited" << '\n';
-//					erredits_output_file << before_first_error_kmer << " " << edited_error_portion << " " << after_last_error_kmer << '\n';
-//					file.GetCountersForRead(edited_error_block, w);
-//					for (int j=0; j < w.size(); j++)
-//					{
-//						erredits_output_file << w.at(j) << " ";
-//					}
-//					erredits_output_file << '\n';
-//					edited_read += edited_paths[0];
-//				}
-//				//Either we didn't fully travel all of the paths (with depth between min and max distance)
-//				//or there does not exist only exactly one path that bridges that gap
-//				else
-//				{
-//					std::string uneditable_error_portion = read.substr(first_error_idx, last_error_idx - first_error_idx + 1);
-//					edited_read += uneditable_error_portion;
-//					//Let's keep track of all the possible paths, just for bookkeeping.
-//					//We only record those paths where the search completed and there are multiple.
-//					if ((!queue_broken) && (edited_paths.size() > 1))
-//					{
-//						std::string portion;
-//						errpaths_output_file << ">read" << read_number << "_firsterrorkmer" << first_error_idx << "_lasterrorkmer" << last_error_idx << "_original" << '\n';
-//						if (uneditable_error_portion.length() >= k-1)
-//						{
-//							errpaths_output_file << before_first_error_kmer << " " << uneditable_error_portion.substr(k-1) << " " << after_last_error_kmer << '\n';
-//							portion = before_first_error_kmer + uneditable_error_portion.substr(k-1) + after_last_error_kmer;
-//						}
-//						else
-//						{
-//							errpaths_output_file << before_first_error_kmer.front() << " " << uneditable_error_portion << " " << after_last_error_kmer << '\n';
-//							portion = before_first_error_kmer.front() + uneditable_error_portion + after_last_error_kmer;
-//						}
-//						std::vector<uint32_t> w;
-//						file.GetCountersForRead(portion, w);
-//						for (int j=0; j < w.size(); j++)
-//						{
-//							errpaths_output_file << w.at(j) << " ";
-//						}
-//						errpaths_output_file << '\n';
-//						for (int l = 0; l < edited_paths.size(); l++)
-//						{
-//							std::string edited_path = edited_paths[l];
-//							errpaths_output_file << ">read" << read_number << "_firsterrorkmer" << first_error_idx << "_lasterrorkmer" << last_error_idx << "_path" << l << '\n';
-//							if (edited_path.length() >= k-1)
-//							{
-//								errpaths_output_file << before_first_error_kmer << " " << edited_path.substr(k-1) << " " << after_last_error_kmer << '\n';
-//								portion = before_first_error_kmer + edited_path.substr(k-1) + after_last_error_kmer;
-//							}
-//							else 
-//							{
-//								errpaths_output_file << before_first_error_kmer.front() << " " << edited_path << " " << after_last_error_kmer << '\n';
-//								portion = before_first_error_kmer.front() + edited_path + after_last_error_kmer;
-//							}
-//							std::vector<uint32_t> w;
-//							file.GetCountersForRead(portion, w);
-//							for (int j=0; j < w.size(); j++)
-//							{
-//								errpaths_output_file << w.at(j) << " ";
-//							}
-//							errpaths_output_file << '\n';
-//						}
-//					}
-//				}
 			}
 			//if previous kmer is nonerror, we are continuing a non error block
 			if (previous_type > 0)
@@ -880,49 +429,19 @@ std::string remove_err (std::vector<uint32_t>& v, std::string& read, int& read_n
 	if (previous_type == 0)
 	{
 		//We have "left" the error portion of the read
-		//std::cout << "hi" << '\n';
-		//std::string left_anchor_kmer = read.substr(first_error_idx-1, k);
 		after_last_error_kmer = "";
 		int min_distance_of_path = 0;
 		int max_distance_of_path = v.size()-first_error_idx;
 		int max_nodes_to_search = 1000;
 		bool queue_broken = false;
-		//std::cout << "A" << '\n';
-		std::vector<std::string> edited_error_portions = get_paths_right(file, error_threshold, het_threshold, unique_threshold, before_first_error_kmer, min_distance_of_path, max_distance_of_path, max_nodes_to_search, k, queue_broken);
-		//std::cout << "B" << '\n';
+		std::vector<std::string> edited_error_portions = get_paths(file, error_threshold, het_threshold, unique_threshold, before_first_error_kmer, after_last_error_kmer, min_distance_of_path, max_distance_of_path, max_nodes_to_search, k, queue_broken);
 		last_error_idx = v.size()-1;
 		first_nonerror_idx = v.size();
 		std::string original_error_portion = read.substr(first_error_idx+k-1);
-		//std::cout << "C" << '\n';
-		//std::string original_error_block = before_first_error_kmer + original_error_portion;
 		write_error_paths(queue_broken, edited_error_portions, erredits_output_file, errpaths_output_file, edited_read, read_number, first_error_idx, last_error_idx, before_first_error_kmer, original_error_portion, after_last_error_kmer, file);
-		//std::cout << "D" << '\n';
-//		erredits_output_file << ">read" << read_number << "_firsterrorkmer" << first_error_idx << "_lasterrorkmer" << last_error_idx << "_original" << '\n';
-//		erredits_output_file << before_first_error_kmer << " " << original_error_portion << " " << '\n';
-//		std::vector<uint32_t> w;
-//		file.GetCountersForRead(original_error_block, w);
-//		for (int j=0; j < w.size(); j++)
-//		{
-//			erredits_output_file << w.at(j) << " ";
-//		}
-//		erredits_output_file << '\n';
-//		std::string ending_portion = read.substr(first_error_idx-1);
-//		int original_error_portion_length = v.size()-first_error_idx;
-//		std::string edited_error_portion = extend_right_unique(ending_portion, original_error_portion_length, k, error_threshold, het_threshold, unique_threshold, file, read_number);
-//		std::string edited_error_block = before_first_error_kmer + edited_error_portion;
-//		erredits_output_file << ">read" << read_number << "_firsterrorkmer" << first_error_idx << "_lasterrorkmer" << last_error_idx << "_edited" << '\n';
-//		erredits_output_file << before_first_error_kmer << " " << edited_error_portion << " " << '\n';
-//		file.GetCountersForRead(edited_error_block, w);
-//		for (int j=0; j < w.size(); j++)
-//		{
-//			erredits_output_file << w.at(j) << " ";
-//		}
-//		erredits_output_file << '\n';
-//		edited_read += edited_error_portion;
 	}
 	if (previous_type > 0)
 	{
-		//std::cout << "hey" << '\n';
 		//We have "left" the nonerror portion of the read
 		first_error_idx = v.size();
 		last_nonerror_idx = v.size()-1;
@@ -1282,24 +801,21 @@ int main(int argc, char* argv[])
 
 	//load reads
 	int line_num = -1;
-	//currently assuming fasta format
+	//currently assuming input is fastq format
+	//output is fasta format
 	while (getline(input_file, line))
 	{
 		line_num++;
-		//if (line_num % 2 == 0)
-		//if (line_num % 4 != 1)
 		if (line_num % 4 == 0)
 		{
 			//write read header to err output file and het output file
 			err_output_file << line << '\n';
 			het_output_file << line << '\n';
 		}
-		//else
+		//if on line with the read
 		if (line_num % 4 == 1)
 		{
 			std::string read = line;
-			//std::cout << "size of read: " << read.size() << '\n';
-			//int read_number = (line_num+1)/2;
 			int read_number = (line_num+3)/4;
 			//if (read_number%10000==0)
 			//{
@@ -1326,7 +842,6 @@ int main(int argc, char* argv[])
 
 			//remove errors from the read to get edited read
 			std::string edited_read = remove_err(v, read, read_number, file, erredits_output_file, errpaths_output_file);
-			//std::cout << "edited read size " << edited_read.size() << '\n';
 
 			//write edited read to err_output_file
 			err_output_file << edited_read;
@@ -1347,8 +862,10 @@ int main(int argc, char* argv[])
 				het_output_file << "N" << '\n';
 				continue;
 			}
+
 			//smoothe het from the edited read to get smoothed read
 			std::string smoothed_read = smooth_het(v, edited_read, read_number, file, hetedits_output_file, hetpaths_output_file);
+
 			//write smoothed read to het_output_file
 			het_output_file << smoothed_read;
 		}
