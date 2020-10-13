@@ -178,22 +178,6 @@ std::vector<std::string> get_paths(CKMCFile& file, int& error_threshold, int& he
 	return paths;
 }
 
-//std::vector<std::string> extend_left_het(std::string& beginning_portion, int& i, int& k, int& error_threshold, int& het_threshold, int& unique_threshold, CKMCFile& file, int& read_number)
-//{
-//	std::vector<std::string> extensions;
-//	extensions.push_back(beginning_portion.substr(0, i));
-//	extensions.push_back(beginning_portion.substr(0, i));
-//	return extensions;
-//}
-
-//std::vector<std::string> extend_right_het(std::string& ending_portion, int& i, int& k, int& error_threshold, int& het_threshold, int& unique_threshold, CKMCFile& file, int& read_number)
-//{
-//	std::vector<std::string> extensions;
-//	extensions.push_back(ending_portion.substr(k));
-//	extensions.push_back(ending_portion.substr(k));
-//	return extensions;
-//}
-
 bool IsErr (uint32_t coverage)
 {
 	int error_threshold = 9;
@@ -540,56 +524,6 @@ std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_n
 				first_hom_idx = i;
 				std::string original_nonhom_portion = read.substr(0, i);
 				write_nonhom_paths(queue_broken, smoothed_nonhom_portions, hetedits_output_file, hetpaths_output_file, smoothed_read, read_number, first_nonhom_idx, last_nonhom_idx, before_first_nonhom_kmer, original_nonhom_portion, after_last_nonhom_kmer, file);
-//				std::string original_nonhom_block = original_nonhom_portion + after_last_nonhom_kmer;
-//				hetedits_output_file << ">read" << read_number << "_firstnonhomkmer" << first_nonhom_idx << "_lastnonhomkmer" << last_nonhom_idx << "_original" << '\n';
-//				hetedits_output_file << " " << original_nonhom_portion << " " << after_last_nonhom_kmer << '\n';
-//				std::vector<uint32_t> w;
-//				file.GetCountersForRead(original_nonhom_block, w);
-//				for (int j=0; j < w.size(); j++)
-//				{
-//					hetedits_output_file << w.at(j) << " ";
-//				}
-//				hetedits_output_file << '\n';
-//				std::string beginning_portion = read.substr(0, i+k);
-//				std::vector<std::string> smoothed_nonhom_portions = extend_left_het(beginning_portion, i, k, error_threshold, het_threshold, unique_threshold, file, read_number);
-//				std::string smoothed_nonhom_portion0 = smoothed_nonhom_portions[0];
-//				std::string smoothed_nonhom_portion1 = smoothed_nonhom_portions[1];
-//				file.GetCountersForRead(smoothed_nonhom_portions[0]+after_last_nonhom_kmer.substr(0, k-1), w);
-//				float average0 = std::accumulate(w.begin(), w.end(), 0.0)/w.size();
-//				file.GetCountersForRead(smoothed_nonhom_portions[1]+after_last_nonhom_kmer.substr(0, k-1), w);
-//				float average1 = std::accumulate(w.begin(), w.end(), 0.0)/w.size();
-//				std::string primary_smoothed_nonhom_portion;
-//				std::string alternate_smoothed_nonhom_portion;
-//				if (average0 > average1)
-//				{
-//					primary_smoothed_nonhom_portion = smoothed_nonhom_portion0;
-//					alternate_smoothed_nonhom_portion = smoothed_nonhom_portion1;
-//					smoothed_read += smoothed_nonhom_portions[0];
-//				}
-//				else
-//				{
-//					primary_smoothed_nonhom_portion = smoothed_nonhom_portion1;
-//					alternate_smoothed_nonhom_portion = smoothed_nonhom_portion0;
-//					smoothed_read += smoothed_nonhom_portions[1];
-//				}
-//				std::string primary_smoothed_nonhom_block = primary_smoothed_nonhom_portion + after_last_nonhom_kmer;
-//				std::string alternate_smoothed_nonhom_block = alternate_smoothed_nonhom_portion + after_last_nonhom_kmer;
-//				hetedits_output_file << ">read" << read_number << "_firstnonhomkmer" << first_nonhom_idx << "_lastnonhomkmer" << last_nonhom_idx << "_primary" << '\n';
-//				hetedits_output_file << " " << primary_smoothed_nonhom_portion << " " << after_last_nonhom_kmer << '\n';
-//				file.GetCountersForRead(primary_smoothed_nonhom_block, w);
-//				for (int j=0; j < w.size(); j++)
-//				{
-//					hetedits_output_file << w.at(j) << " ";
-//				}
-//				hetedits_output_file << '\n';
-//				hetedits_output_file << ">read" << read_number << "_firstnonhomkmer" << first_nonhom_idx << "_lastnonhomkmer" << last_nonhom_idx << "_alternate" << '\n';
-//				hetedits_output_file << " " << alternate_smoothed_nonhom_portion << " " << after_last_nonhom_kmer << '\n';
-//				file.GetCountersForRead(alternate_smoothed_nonhom_block, w);
-//				for (int j=0; j < w.size(); j++)
-//				{
-//					hetedits_output_file << w.at(j) << " ";
-//				}
-//				hetedits_output_file << '\n';
 			}
 			//if previous kmer was nonhom, we have left the nonhom block
 			if (((previous_type == 0) || (previous_type == 1) || (previous_type == 3)) && !before_first_nonhom_kmer.empty())
@@ -613,113 +547,6 @@ std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_n
 				first_hom_idx = i;
 				std::string original_nonhom_portion = read.substr(first_nonhom_idx+k-1, last_nonhom_idx - first_nonhom_idx + 2 - k);
 				write_nonhom_paths(queue_broken, smoothed_nonhom_portions, hetedits_output_file, hetpaths_output_file, smoothed_read, read_number, first_nonhom_idx, last_nonhom_idx, before_first_nonhom_kmer, original_nonhom_portion, after_last_nonhom_kmer, file);
-//				//Only smoothe if we fully traveled all of the paths (with depth between min and max distance)
-//				//and there exists only exactly two paths that bridge the gap
-//				if (!queue_broken && smoothed_nonhom_portions.size() == 2)
-//				{
-//					std::string original_nonhom_portion = read.substr(first_nonhom_idx+k-1, last_nonhom_idx - first_nonhom_idx + 2 - k);
-//					std::string original_nonhom_block = before_first_nonhom_kmer + original_nonhom_portion + after_last_nonhom_kmer;
-//					hetedits_output_file << ">read" << read_number << "_firstnonhomkmer" << first_nonhom_idx << "_lastnonhomkmer" << last_nonhom_idx << "_original" << '\n';
-//					hetedits_output_file << before_first_nonhom_kmer << " " << original_nonhom_portion << " " << after_last_nonhom_kmer << '\n';
-//					std::vector<uint32_t> w;
-//					file.GetCountersForRead(original_nonhom_block, w);
-//					for (int j=0; j < w.size(); j++)
-//					{
-//						hetedits_output_file << w.at(j) << " ";
-//					}
-//					hetedits_output_file << '\n';
-//					std::string smoothed_nonhom_portion0 = smoothed_nonhom_portions[0].substr(k-1);
-//					std::string smoothed_nonhom_portion1 = smoothed_nonhom_portions[1].substr(k-1);
-//					file.GetCountersForRead(smoothed_nonhom_portions[0]+after_last_nonhom_kmer.substr(0, k-1), w);
-//					float average0 = std::accumulate(w.begin(), w.end(), 0.0)/w.size();
-//					file.GetCountersForRead(smoothed_nonhom_portions[1]+after_last_nonhom_kmer.substr(0, k-1), w);
-//					float average1 = std::accumulate(w.begin(), w.end(), 0.0)/w.size();
-//					std::string primary_smoothed_nonhom_portion;
-//					std::string alternate_smoothed_nonhom_portion;
-//					if (average0 > average1)
-//					{
-//						primary_smoothed_nonhom_portion = smoothed_nonhom_portion0;
-//						alternate_smoothed_nonhom_portion = smoothed_nonhom_portion1;
-//						smoothed_read += smoothed_nonhom_portions[0];
-//					}
-//					else
-//					{
-//						primary_smoothed_nonhom_portion = smoothed_nonhom_portion1;
-//						alternate_smoothed_nonhom_portion = smoothed_nonhom_portion0;
-//						smoothed_read += smoothed_nonhom_portions[1];
-//					}
-//					std::string primary_smoothed_nonhom_block = before_first_nonhom_kmer + primary_smoothed_nonhom_portion + after_last_nonhom_kmer;
-//					std::string alternate_smoothed_nonhom_block = before_first_nonhom_kmer + alternate_smoothed_nonhom_portion + after_last_nonhom_kmer;
-//					hetedits_output_file << ">read" << read_number << "_firstnonhomkmer" << first_nonhom_idx << "_lastnonhomkmer" << last_nonhom_idx << "_primary" << '\n';
-//					hetedits_output_file << before_first_nonhom_kmer << " " << primary_smoothed_nonhom_portion << " " << after_last_nonhom_kmer << '\n';
-//					file.GetCountersForRead(primary_smoothed_nonhom_block, w);
-//					for (int j=0; j < w.size(); j++)
-//					{
-//						hetedits_output_file << w.at(j) << " ";
-//					}
-//					hetedits_output_file << '\n';
-//					hetedits_output_file << ">read" << read_number << "_firstnonhomkmer" << first_nonhom_idx << "_lastnonhomkmer" << last_nonhom_idx << "_alternate" << '\n';
-//					hetedits_output_file << before_first_nonhom_kmer << " " << alternate_smoothed_nonhom_portion << " " << after_last_nonhom_kmer << '\n';
-//					file.GetCountersForRead(alternate_smoothed_nonhom_block, w);
-//					for (int j=0; j < w.size(); j++)
-//					{
-//						hetedits_output_file << w.at(j) << " ";
-//					}
-//					hetedits_output_file << '\n';
-//				}
-//				//Either we didn't fully travel all of the paths (with depth between min and max distance)
-//				//or there does not exist only exactly two paths that bridge the gap
-//				else
-//				{
-//					std::string unsmoothable_nonhom_portion = read.substr(first_nonhom_idx, last_nonhom_idx - first_nonhom_idx + 1);
-//					smoothed_read += unsmoothable_nonhom_portion;
-//					//Let's keep track of all the possible paths, just for bookkeeping.
-//					//We only record those paths where the search completed and there are more than 2 
-//					if ((!queue_broken) && (smoothed_nonhom_portions.size() > 2))
-//					{
-//						std::string portion;
-//						hetpaths_output_file << ">read" << read_number << "_firstnonhomkmer" << first_nonhom_idx << "_lastnonhomkmer" << last_nonhom_idx << "_original" << '\n';
-//						if (unsmoothable_nonhom_portion.length() >= k-1)
-//						{
-//							hetpaths_output_file << before_first_nonhom_kmer << " " << unsmoothable_nonhom_portion.substr(k-1) << " " << after_last_nonhom_kmer << '\n';
-//							portion = before_first_nonhom_kmer + unsmoothable_nonhom_portion.substr(k-1) + after_last_nonhom_kmer;
-//						}
-//						else
-//						{
-//							hetpaths_output_file << before_first_nonhom_kmer.front() << " " << unsmoothable_nonhom_portion << " " << after_last_nonhom_kmer << '\n';
-//							portion = before_first_nonhom_kmer.front() + unsmoothable_nonhom_portion + after_last_nonhom_kmer;
-//						}
-//						std::vector<uint32_t> w;
-//						file.GetCountersForRead(portion, w);
-//						for (int j=0; j < w.size(); j++)
-//						{
-//							hetpaths_output_file << w.at(j) << " ";
-//						}
-//						hetpaths_output_file << '\n';
-//						for (int l = 0; l < smoothed_nonhom_portions.size(); l++)
-//            {
-  //            std::string smoothed_nonhom_portion = smoothed_nonhom_portions[l];
-	//						hetpaths_output_file << ">read" << read_number << "_firstnonhomkmer" << first_nonhom_idx << "_lastnonhomkmer" << last_nonhom_idx << "_path" << l << '\n';
-//							if (smoothed_nonhom_portion.length() >= k-1)
-//							{
-//								hetpaths_output_file << before_first_nonhom_kmer << " " << smoothed_nonhom_portion.substr(k-1) << " " << after_last_nonhom_kmer << '\n';
-//								portion = before_first_nonhom_kmer + smoothed_nonhom_portion.substr(k-1) + after_last_nonhom_kmer;
-//							}
-//							else 
-//							{
-//								hetpaths_output_file << before_first_nonhom_kmer.front() << " " << smoothed_nonhom_portion << " " << after_last_nonhom_kmer << '\n';
-//								portion = before_first_nonhom_kmer.front() + smoothed_nonhom_portion + after_last_nonhom_kmer;
-//							}
-//							std::vector<uint32_t> w;
-//							file.GetCountersForRead(portion, w);
-//							for (int j=0; j < w.size(); j++)
-//							{
-//								hetpaths_output_file << w.at(j) << " ";
-//							}
-//							hetpaths_output_file << '\n';
-//            }
-//					}
-//				}
 			}
 			//if previous kmer is hom, we are continuing a hom block
 			if (previous_type == 2)
@@ -729,7 +556,6 @@ std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_n
 			previous_type = current_type;
 		}
 	}
-	//std::cout << "hey" << '\n';
 	//We have reached the end of the read, let's make sure we have added the last bit of the read
 	if ((previous_type == 0) || (previous_type == 1) || (previous_type == 3))
 	{
@@ -740,7 +566,6 @@ std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_n
 			after_last_nonhom_kmer = "";
 			int min_distance_of_path = 0;
 			int max_distance_of_path = v.size()-first_nonhom_idx;
-			//std::cout << "max distance of path: " << max_distance_of_path << '\n';
 			int max_nodes_to_search = 1000;
 			bool queue_broken = false;
 			std::vector<std::string> smoothed_nonhom_portions = get_paths(file, error_threshold, het_threshold, unique_threshold, before_first_nonhom_kmer, after_last_nonhom_kmer, min_distance_of_path, max_distance_of_path, max_nodes_to_search, k, queue_broken);
@@ -753,67 +578,6 @@ std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_n
 		{
 			smoothed_read += read;
 		}
-//		//If we have a homozygous kmer on left with which to anchor
-//		if (first_nonhom_idx > 0)
-//		{
-//			std::string original_nonhom_portion = read.substr(first_nonhom_idx+k-1);
-//			std::string original_nonhom_block = before_first_nonhom_kmer + original_nonhom_portion;
-//			hetedits_output_file << ">read" << read_number << "_firstnonhomkmer" << first_nonhom_idx << "_lastnonhomkmer" << last_nonhom_idx << "_original" << '\n';
-//			hetedits_output_file << before_first_nonhom_kmer << " " << original_nonhom_portion << " " << '\n';
-//			std::vector<uint32_t> w;
-//			file.GetCountersForRead(original_nonhom_block, w);
-//			for (int j=0; j < w.size(); j++)
-//			{
-//				hetedits_output_file << w.at(j) << " ";
-//			}
-//			hetedits_output_file << '\n';
-//			std::string ending_portion = read.substr(first_nonhom_idx-1);
-//			int original_nonhom_portion_length = v.size()-first_nonhom_idx;
-//			std::vector<std::string> smoothed_nonhom_portions = extend_right_het(ending_portion, original_nonhom_portion_length, k, error_threshold, het_threshold, unique_threshold, file, read_number);
-//			std::string smoothed_nonhom_portion0 = smoothed_nonhom_portions[0];
-//			std::string smoothed_nonhom_portion1 = smoothed_nonhom_portions[1];
-//			file.GetCountersForRead(before_first_nonhom_kmer.substr(1) + smoothed_nonhom_portion0, w);
-//			float average0 = std::accumulate(w.begin(), w.end(), 0.0)/w.size();
-//			file.GetCountersForRead(before_first_nonhom_kmer.substr(1) + smoothed_nonhom_portion1, w);
-//			float average1 = std::accumulate(w.begin(), w.end(), 0.0)/w.size();
-//			std::string primary_smoothed_nonhom_portion;
-//			std::string alternate_smoothed_nonhom_portion;
-//			if (average0 > average1)
-//			{
-//				primary_smoothed_nonhom_portion = smoothed_nonhom_portion0;
-//				alternate_smoothed_nonhom_portion = smoothed_nonhom_portion1;
-//				smoothed_read += smoothed_nonhom_portions[0];
-//			}
-//			else
-//			{
-//				primary_smoothed_nonhom_portion = smoothed_nonhom_portion1;
-//				alternate_smoothed_nonhom_portion = smoothed_nonhom_portion0;
-//				smoothed_read += smoothed_nonhom_portions[1];
-//			}
-//			std::string primary_smoothed_nonhom_block = before_first_nonhom_kmer + primary_smoothed_nonhom_portion;
-//			std::string alternate_smoothed_nonhom_block = before_first_nonhom_kmer + alternate_smoothed_nonhom_portion;
-//			hetedits_output_file << ">read" << read_number << "_firstnonhomkmer" << first_nonhom_idx << "_lastnonhomkmer" << last_nonhom_idx << "_primary" << '\n';
-//			hetedits_output_file << before_first_nonhom_kmer << " " << primary_smoothed_nonhom_portion << " " << '\n';
-//			file.GetCountersForRead(primary_smoothed_nonhom_block, w);
-//			for (int j=0; j < w.size(); j++)
-//			{
-//				hetedits_output_file << w.at(j) << " ";
-//			}
-//			hetedits_output_file << '\n';
-//			hetedits_output_file << ">read" << read_number << "_firstnonhomkmer" << first_nonhom_idx << "_lastnonhomkmer" << last_nonhom_idx << "_alternate" << '\n';
-//			hetedits_output_file << before_first_nonhom_kmer << " " << alternate_smoothed_nonhom_portion << " " << '\n';
-//			file.GetCountersForRead(alternate_smoothed_nonhom_block, w);
-//			for (int j=0; j < w.size(); j++)
-//			{
-//				hetedits_output_file << w.at(j) << " ";
-//			}
-//			hetedits_output_file << '\n';
-//		}
-//		//else, there is no homozygous kmer in the read
-//		else
-//		{
-//			smoothed_read += read; 
-//		}
 	}
 	if (previous_type == 2)
 	{
@@ -861,10 +625,10 @@ int main(int argc, char* argv[])
 		{
 			std::string read = line;
 			int read_number = (line_num+3)/4;
-			//if (read_number%10000==0)
-			//{
+			if (read_number%10000==0)
+			{
 				std::cout << read_number << '\n';
-			//}
+			}
 			
 			//get counters of kmers in read
 			std::vector<uint32_t> v;
@@ -886,8 +650,6 @@ int main(int argc, char* argv[])
 
 			//remove errors from the read to get edited read
 			std::string edited_read = remove_err(v, read, read_number, file, erredits_output_file, errpaths_output_file);
-			//std::cout << "edited read length " << edited_read.length() << '\n';
-			//std::cout << edited_read << '\n';
 
 			//write edited read to err_output_file
 			err_output_file << edited_read;
@@ -905,14 +667,13 @@ int main(int argc, char* argv[])
 			if (rep_fraction >= 0.25)
 			{
 				//std::cout << "read number " << read_number << " has " << rep_fraction << " percent repetitive kmers, discarding." << '\n';
-				het_output_file << "N" << '\n';
+				//het_output_file << "N" << '\n';
+				het_output_file << edited_read << '\n';
 				continue;
 			}
 
 			//smoothe het from the edited read to get smoothed read
 			std::string smoothed_read = smooth_het(v, edited_read, read_number, file, hetedits_output_file, hetpaths_output_file);
-			//std::cout << "smoothed read length " << smoothed_read.length() << '\n';
-			//std::cout << smoothed_read << '\n';
 
 			//write smoothed read to het_output_file
 			het_output_file << smoothed_read;
