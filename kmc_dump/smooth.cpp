@@ -678,13 +678,13 @@ int main(int argc, char* argv[])
 			//write smoothed read to het_output_file
 			het_output_file << smoothed_read;
 		}
-  }
-  input_file.close();
-  err_output_file.close();
-  erredits_output_file.close();
-  errpaths_output_file.close();
-  het_output_file.close();
-  hetedits_output_file.close();
+	}
+	input_file.close();
+	err_output_file.close();
+	erredits_output_file.close();
+	errpaths_output_file.close();
+	het_output_file.close();
+	hetedits_output_file.close();
 	hetpaths_output_file.close();
-  return 0;
+	return 0;
 }
