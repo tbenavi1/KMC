@@ -130,18 +130,29 @@ int get_type_het(int& previous_type, std::string& previous_kmer, std::string& cu
 		if (is_left_anchor(previous_kmer, previous_count, k, file, error_threshold, het_threshold, unique_threshold))
 		{
 			//we have left the hom region
-			std::cout << "left anchor" << '\n';
+			//std::cout << "left anchor" << '\n';
 			return 1;
 		}
 		//if current kmer is a right anchor
 		if (is_right_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold))
 		{
 			//we have left the nonhom region
-			std::cout << "right anchor" <<'\n';
+			//std::cout << "right anchor" <<'\n';
 			return 2;
 		}
 		//else we continue the beginning of the read
-		return -1;
+		//return -1;
+		//To keep it consistent with previous get_type, we need type to be -1 only before we start the read
+		//So, in this case we will do what was done before, using the coverage and coverage thresholds to
+		//determine whether the kmer is homozygous or not
+		if ((het_threshold < current_count) && (current_count <= unique_threshold))
+		{
+			return 2;
+		}
+		else
+		{
+			return 1;
+		}
 	}
 	//If previously in a nonhomozygous region
 	if (previous_type == 1)
@@ -150,13 +161,13 @@ int get_type_het(int& previous_type, std::string& previous_kmer, std::string& cu
 		if (is_left_anchor(previous_kmer, previous_count, k, file, error_threshold, het_threshold, unique_threshold))
 		{
 			//this is a weird case where we find two left anchors in a row before a right anchor
-			std::cout << "we found two left anchors in a row" << '\n';
+			//std::cout << "we found two left anchors in a row" << '\n';
 		}
 		//If current kmer is a right anchor
 		if (is_right_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold))
 		{
 			//we have left the nonhom region
-			std::cout << "right anchor" << '\n';
+			//std::cout << "right anchor" << '\n';
 			return 2;
 		}
 		//else current kmer is not a right anchor
@@ -173,13 +184,13 @@ int get_type_het(int& previous_type, std::string& previous_kmer, std::string& cu
 		if (is_right_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold))
 		{
 			//this is a weird case where we find two right anchors in a row before a left anchor
-			std::cout << "we found two right anchors in a row" << '\n';
+			//std::cout << "we found two right anchors in a row" << '\n';
 		}
 		//If previous kmer is a left anchor
 		if (is_left_anchor(previous_kmer, previous_count, k, file, error_threshold, het_threshold, unique_threshold))
 		{
 			//we have left the hom region
-			std::cout << "left anchor" << '\n';
+			//std::cout << "left anchor" << '\n';
 			return 1;
 		}
 		//else previous kmer is not a left anchor
@@ -252,7 +263,7 @@ std::vector<std::string> get_paths(CKMCFile& file, int& error_threshold, int& he
 		//If we have to terminate search early
 		if (i > max_nodes_to_search)
 		{
-			std::cout << "queue broken" << '\n';
+			//std::cout << "queue broken" << '\n';
 			queue_broken = true;
 			break;
 		}
@@ -271,10 +282,6 @@ std::vector<std::string> get_paths(CKMCFile& file, int& error_threshold, int& he
 				else
 				{
 					path = adjacent_kmer.front() + current_path;
-				}
-				if (right_anchor_kmer == "GTGAATTGTTCGAAAAGGAGG")
-				{
-					std::cout << path << '\n';
 				}
 				bool end_condition;
 				//If we are in the middle of the read, we end when we have found a path
@@ -318,13 +325,13 @@ std::vector<std::string> get_paths(CKMCFile& file, int& error_threshold, int& he
 
 bool IsErr (uint32_t coverage)
 {
-	int error_threshold = 4; //9 for atha, 5 for simulated_hifi, 4 for amaranth
+	int error_threshold = 5; //9 for atha, 5 for simulated_hifi, 4 for amaranth
 	return (coverage <= error_threshold);
 }
 
 bool IsRep (uint32_t coverage)
 {
-	int unique_threshold = 60; //72 for atha, 50 for simulated_hifi, 60 for amaranth
+	int unique_threshold = 50; //72 for atha, 50 for simulated_hifi, 60 for amaranth
 	return (coverage > unique_threshold);
 }
 
@@ -468,9 +475,9 @@ std::string remove_err (std::vector<uint32_t>& v, std::string& read, int& read_n
 	//initialize variables
 	std::string edited_read;
 	int k = 21;
-	int error_threshold = 4; //8 for dmel, 9 for atha, 5 for simulated_hifi, 4 for amaranth
-	int het_threshold = 29; //21 for dmel, 30 for atha, 20 for simulated_hifi at 0.5% error, 29 for amaranth
-	int unique_threshold = 60; //60 for dmel, 72 for atha, 50 for simulated_hifi, 60 for amaranth
+	int error_threshold = 5; //8 for dmel, 9 for atha, 5 for simulated_hifi, 4 for amaranth
+	int het_threshold = 20; //21 for dmel, 30 for atha, 20 for simulated_hifi at 0.5% error, 29 for amaranth
+	int unique_threshold = 50; //60 for dmel, 72 for atha, 50 for simulated_hifi, 60 for amaranth
 
 	//iterate over counts to edit errors
 	int previous_type = -1;
@@ -597,9 +604,9 @@ std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_n
 	//initialize variables
 	std::string smoothed_read;
 	int k = 21;
-	int error_threshold = 4; //8 for dmel, 9 for atha, 5 for simulated_hifi, 4 for amaranth
-	int het_threshold = 29; //21 for dmel, 30 for atha, 20 for simulated_hifi at 0.5% error, 29 for amaranth
-	int unique_threshold = 60; //60 for dmel, 72 for atha, 50 for simulated_hifi, 60 for amaranth
+	int error_threshold = 5; //8 for dmel, 9 for atha, 5 for simulated_hifi, 4 for amaranth
+	int het_threshold = 20; //21 for dmel, 30 for atha, 20 for simulated_hifi at 0.5% error, 29 for amaranth
+	int unique_threshold = 50; //60 for dmel, 72 for atha, 50 for simulated_hifi, 60 for amaranth
 
 	//iterate over counts to smoothe het
 	int previous_type = -1;
@@ -611,7 +618,7 @@ std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_n
 	std::string after_last_nonhom_kmer;
 	for (int i = 0; i < v.size(); i++)
 	{
-		std::cout << i << '\n';
+		//std::cout << i << '\n';
 		//int current_type = get_type(v[i], error_threshold, het_threshold, unique_threshold);
 		std::string previous_kmer;
 		int previous_count;
@@ -749,67 +756,6 @@ std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_n
 	return smoothed_read;
 }
 
-//int get_het_threshold(std::vector<uint32_t>& v)
-//{
-//	int het_threshold;
-//	//make histogram of kmer coverages
-//	//to find het and hom peaks
-//	//max index is unique_threshold
-//	std::vector<int> counts (50, 0);
-//	for (int i=0; i<v.size(); i++)
-//	{
-//		if (v[i] < 50)
-//		{
-//			counts[v[i]]++;
-//		}
-//	}
-//	//making rolling average to smooth out histogram
-//	//and make it easier to find peaks
-//	std::vector<double> rolling_counts(50, 0);
-//	for (int i=0; i<counts.size(); i++)
-//	{
-//		if (i==0)
-//		{
-//			rolling_counts[i] = static_cast<double>(counts[i] + counts[i+1])/2;
-//		}
-//		else if (i==49)
-//		{
-//			rolling_counts[i] = static_cast<double>(counts[i-1] + counts[i])/2;
-//		}
-//		else
-//		{
-//			rolling_counts[i] = static_cast<double>(counts[i-1] + counts[i] + counts[i+1])/3;
-//		}
-//	}
-//	vector<int> mx;
-//	if (rolling_counts[0] > rolling_counts[1])
-//	{
-//		mx.push_back(0);
-//	}
-//	for (int i = 1; i < counts.size()-1; i++)
-//	{
-//		
-//	}
-//	auto it = std::max_element(counts.begin(), counts.end());
-//	auto it2 = std::min_element(counts.begin()+(it-counts.begin())/2, it);
-//	for (auto count: counts)
-//	{
-//		std::cout << count << " ";
-//	}
-//	std::cout << '\n';
-//	//std::cout << it2-counts.begin() << '\n';
-//	int het_threshold;
-//	if ((15 <= it2-counts.begin()) && (it2-counts.begin() <= 30))
-//	{
-//		het_threshold = it2-counts.begin();
-//	}
-//	else
-//	{
-//		het_threshold = 20;
-//	}
-//	return het_threshold
-//}
-
 int main(int argc, char* argv[])
 {
 	//load KMC database
@@ -894,7 +840,6 @@ int main(int argc, char* argv[])
 				het_output_file << edited_read << '\n';
 				continue;
 			}
-			//int het_threshold = get_het_threshold(v);
 
 			//smoothe het from the edited read to get smoothed read
 			std::string smoothed_read = smooth_het(v, edited_read, read_number, file, hetedits_output_file, hetpaths_output_file);
