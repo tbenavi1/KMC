@@ -763,7 +763,7 @@ std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_n
 
 std::string getFileExt (const std::string &s)
 {
-	size_t i = s.find('.', s.length());
+	size_t i = s.find_last_of('.');
 	if (i != std::string::npos)
 	{
 		return(s.substr(i+1, s.length() - i));
@@ -801,11 +801,11 @@ int main(int argc, char* argv[])
 	//note: the output will be fasta format, since quality values
 	//will not match once the read is edited and smoothed
 	int num_lines_per_read;
-	if ((getFileExt(argv[2]) == ".fasta") || (getFileExt(argv[2]) == ".fa"))
+	if ((getFileExt(argv[2]) == "fasta") || (getFileExt(argv[2]) == "fa"))
 	{
 		num_lines_per_read = 2;
 	}
-	if ((getFileExt(argv[2]) == ".fastq") || (getFileExt(argv[2]) == ".fq"))
+	if ((getFileExt(argv[2]) == "fastq") || (getFileExt(argv[2]) == "fq"))
 	{
 		num_lines_per_read = 4;
 	}
