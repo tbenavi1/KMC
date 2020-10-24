@@ -8,6 +8,7 @@
 #include <list>
 #include <math.h>
 #include <numeric>
+#include <stdlib.h>
 #include <vector>
 
 int get_type(uint32_t& coverage, int& error_threshold, int& het_threshold, int& unique_threshold)
@@ -160,14 +161,12 @@ int get_type_het(int& previous_type, std::string& previous_kmer, std::string& cu
 	if (previous_type == 1)
 	{
 		//If previous kmer is a left anchor
-		//if ((current_count < (previous_count - error_threshold)) && is_left_anchor(previous_kmer, previous_count, k, file, error_threshold, het_threshold, unique_threshold))
+		if ((current_count < (previous_count - error_threshold)) && is_left_anchor(previous_kmer, previous_count, k, file, error_threshold, het_threshold, unique_threshold))
 		//If current kmer is a left anchor
-		if (is_left_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold))
+		//if (is_left_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold))
 		{
 			//this is a weird case where we find two left anchors in a row before a right anchor
 			//std::cout << "we found two left anchors in a row" << '\n';
-			
-			return 2;
 		}
 		//If current kmer is a right anchor
 		if ((current_count > (previous_count + error_threshold)) && is_right_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold))
@@ -329,17 +328,17 @@ std::vector<std::string> get_paths(CKMCFile& file, int& error_threshold, int& he
 	return paths;
 }
 
-bool IsErr (uint32_t coverage)
-{
-	int error_threshold = 7; //9 for atha, 5 for simulated_hifi, 4 for amaranth, 8 for dmel, 12 for msie, 7 for msyl
-	return (coverage <= error_threshold);
-}
+//bool IsErr (uint32_t coverage)
+//{
+//	int error_threshold = 7; //9 for atha, 5 for simulated_hifi, 4 for amaranth, 8 for dmel, 12 for msie, 7 for msyl
+//	return (coverage <= error_threshold);
+//}
 
-bool IsRep (uint32_t coverage)
-{
-	int unique_threshold = 60; //72 for atha, 50 for simulated_hifi, 60 for amaranth, 60 for dmel, 100 for msie, 60 for msyl
-	return (coverage > unique_threshold);
-}
+//bool IsRep (uint32_t coverage)
+//{
+//	int unique_threshold = 60; //72 for atha, 50 for simulated_hifi, 60 for amaranth, 60 for dmel, 100 for msie, 60 for msyl
+//	return (coverage > unique_threshold);
+//}
 
 void write_error_paths(bool& queue_broken, std::vector<std::string>& edited_error_portions, std::ofstream& erredits_output_file, std::ofstream& errpaths_output_file, std::string& edited_read, int& read_number, int& first_error_idx, int& last_error_idx, std::string& before_first_error_kmer, std::string& original_error_portion, std::string& after_last_error_kmer, CKMCFile& file)
 {
@@ -476,14 +475,14 @@ void write_nonhom_paths(bool& queue_broken, std::vector<std::string>& smoothed_n
 	}
 }
 
-std::string remove_err (std::vector<uint32_t>& v, std::string& read, int& read_number, CKMCFile& file, std::ofstream& erredits_output_file, std::ofstream& errpaths_output_file)
+std::string remove_err (std::vector<uint32_t>& v, std::string& read, int& read_number, CKMCFile& file, std::ofstream& erredits_output_file, std::ofstream& errpaths_output_file, int& error_threshold, int& het_threshold, int& unique_threshold, int& max_nodes_to_search, double& distance_multiplier)
 {
 	//initialize variables
 	std::string edited_read;
 	int k = 21;
-	int error_threshold = 7; //8 for dmel, 9 for atha, 5 for simulated_hifi, 4 for amaranth, 8 for dmel, 12 for msie, 7 for msyl
-	int het_threshold = 29; //21 for dmel, 30 for atha, 20 for simulated_hifi at 0.5% error, 29 for amaranth, 29 for dmel, 48 for msie, 29 for msyl
-	int unique_threshold = 60; //60 for dmel, 72 for atha, 50 for simulated_hifi, 60 for amaranth, 60 for dmel, 100 for msie, 60 for msyl
+	//int error_threshold = 7; //8 for dmel, 9 for atha, 5 for simulated_hifi, 4 for amaranth, 8 for dmel, 12 for msie, 7 for msyl
+	//int het_threshold = 29; //21 for dmel, 30 for atha, 20 for simulated_hifi at 0.5% error, 29 for amaranth, 29 for dmel, 48 for msie, 29 for msyl
+	//int unique_threshold = 60; //60 for dmel, 72 for atha, 50 for simulated_hifi, 60 for amaranth, 60 for dmel, 100 for msie, 60 for msyl
 
 	//iterate over counts to edit errors
 	int previous_type = -1;
@@ -539,7 +538,7 @@ std::string remove_err (std::vector<uint32_t>& v, std::string& read, int& read_n
 				after_last_error_kmer = read.substr(i, k);
 				int min_distance_of_path = 0;
 				int max_distance_of_path = i;
-				int max_nodes_to_search = 1000;
+				//int max_nodes_to_search = 1000;
 				bool queue_broken = false;
 				std::vector<std::string> edited_error_portions = get_paths(file, error_threshold, het_threshold, unique_threshold, before_first_error_kmer, after_last_error_kmer, min_distance_of_path, max_distance_of_path, max_nodes_to_search, k, queue_broken);
 				last_error_idx = i-1;
@@ -561,8 +560,8 @@ std::string remove_err (std::vector<uint32_t>& v, std::string& read, int& read_n
 				//get kmer that is right after the last error kmer of block
 				after_last_error_kmer = read.substr(i, k);
 				int min_distance_of_path = k;
-				int max_distance_of_path = ceil(1.2 * number_of_error_kmers);
-				int max_nodes_to_search = 1000;
+				int max_distance_of_path = ceil(distance_multiplier * number_of_error_kmers);
+				//int max_nodes_to_search = 1000;
 				bool queue_broken;
 				std::vector<std::string> edited_error_portions = get_paths(file, error_threshold, het_threshold, unique_threshold, before_first_error_kmer, after_last_error_kmer, min_distance_of_path, max_distance_of_path, max_nodes_to_search, k, queue_broken);
 				last_error_idx = i-1;
@@ -585,7 +584,7 @@ std::string remove_err (std::vector<uint32_t>& v, std::string& read, int& read_n
 		after_last_error_kmer = "";
 		int min_distance_of_path = 0;
 		int max_distance_of_path = v.size()-first_error_idx;
-		int max_nodes_to_search = 1000;
+		//int max_nodes_to_search = 1000;
 		bool queue_broken = false;
 		std::vector<std::string> edited_error_portions = get_paths(file, error_threshold, het_threshold, unique_threshold, before_first_error_kmer, after_last_error_kmer, min_distance_of_path, max_distance_of_path, max_nodes_to_search, k, queue_broken);
 		last_error_idx = v.size()-1;
@@ -605,14 +604,14 @@ std::string remove_err (std::vector<uint32_t>& v, std::string& read, int& read_n
 	return edited_read;
 }
 
-std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_number, CKMCFile& file, std::ofstream& hetedits_output_file, std::ofstream& hetpaths_output_file)
+std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_number, CKMCFile& file, std::ofstream& hetedits_output_file, std::ofstream& hetpaths_output_file, int& error_threshold, int& het_threshold, int& unique_threshold, int& max_nodes_to_search, double& distance_multiplier)
 {
 	//initialize variables
 	std::string smoothed_read;
 	int k = 21;
-	int error_threshold = 7; //8 for dmel, 9 for atha, 5 for simulated_hifi, 4 for amaranth, 8 for dmel, 12 for msie, 7 for msyl
-	int het_threshold = 29; //21 for dmel, 30 for atha, 20 for simulated_hifi at 0.5% error, 29 for amaranth, 29 for dmel, 48 for msie, 29 for msyl
-	int unique_threshold = 60; //60 for dmel, 72 for atha, 50 for simulated_hifi, 60 for amaranth, 60 for dmel, 100 for msie, 60 for msyl
+	//int error_threshold = 7; //8 for dmel, 9 for atha, 5 for simulated_hifi, 4 for amaranth, 8 for dmel, 12 for msie, 7 for msyl
+	//int het_threshold = 29; //21 for dmel, 30 for atha, 20 for simulated_hifi at 0.5% error, 29 for amaranth, 29 for dmel, 48 for msie, 29 for msyl
+	//int unique_threshold = 60; //60 for dmel, 72 for atha, 50 for simulated_hifi, 60 for amaranth, 60 for dmel, 100 for msie, 60 for msyl
 
 	//iterate over counts to smoothe het
 	int previous_type = -1;
@@ -688,7 +687,7 @@ std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_n
 				after_last_nonhom_kmer = read.substr(i, k);
 				int min_distance_of_path = 0;
 				int max_distance_of_path = i;
-				int max_nodes_to_search = 1000;
+				//int max_nodes_to_search = 1000;
 				bool queue_broken = false;
 				std::vector<std::string> smoothed_nonhom_portions = get_paths(file, error_threshold, het_threshold, unique_threshold, before_first_nonhom_kmer, after_last_nonhom_kmer, min_distance_of_path, max_distance_of_path, max_nodes_to_search, k, queue_broken);
 				last_nonhom_idx = i-1;
@@ -710,8 +709,8 @@ std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_n
 				//get kmer that is right after the last nonhom kmer of block
 				after_last_nonhom_kmer = read.substr(i, k);
 				int min_distance_of_path = k;
-        int max_distance_of_path = ceil(1.2 * number_of_nonhom_kmers);
-				int max_nodes_to_search = 1000;
+				int max_distance_of_path = ceil(distance_multiplier * number_of_nonhom_kmers);
+				//int max_nodes_to_search = 1000;
 				bool queue_broken;
 				std::vector<std::string> smoothed_nonhom_portions = get_paths(file, error_threshold, het_threshold, unique_threshold, before_first_nonhom_kmer, after_last_nonhom_kmer, min_distance_of_path, max_distance_of_path, max_nodes_to_search, k, queue_broken);
 				last_nonhom_idx = i-1;
@@ -737,7 +736,7 @@ std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_n
 			after_last_nonhom_kmer = "";
 			int min_distance_of_path = 0;
 			int max_distance_of_path = v.size()-first_nonhom_idx;
-			int max_nodes_to_search = 1000;
+			//int max_nodes_to_search = 1000;
 			bool queue_broken = false;
 			std::vector<std::string> smoothed_nonhom_portions = get_paths(file, error_threshold, het_threshold, unique_threshold, before_first_nonhom_kmer, after_last_nonhom_kmer, min_distance_of_path, max_distance_of_path, max_nodes_to_search, k, queue_broken);
 			last_nonhom_idx = v.size()-1;
@@ -762,6 +761,16 @@ std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_n
 	return smoothed_read;
 }
 
+std::string getFileExt (const std::string &s)
+{
+	size_t i = s.find('.', s.length());
+	if (i != std::string::npos)
+	{
+		return(s.substr(i+1, s.length() - i));
+	}
+	return("");
+}
+
 int main(int argc, char* argv[])
 {
 	//load KMC database
@@ -777,32 +786,45 @@ int main(int argc, char* argv[])
 	std::ofstream het_output_file(argv[6]);
 	std::ofstream hetedits_output_file(argv[7]);
 	std::ofstream hetpaths_output_file(argv[8]);
+	int error_threshold = atoi(argv[9]);
+	int het_threshold = atoi(argv[10]);
+	int unique_threshold = atoi(argv[11]);
+	double allowed_err_fraction = std::stod(argv[12]);
+	double allowed_rep_fraction = std::stod(argv[13]);
+	int max_nodes_to_search = atoi(argv[14]);
+	double distance_multiplier = std::stod(argv[15]);
 
 	//load reads
 	int line_num = -1;
+	
+	//is the input fasta or fastq?
+	//note: the output will be fasta format, since quality values
+	//will not match once the read is edited and smoothed
+	int num_lines_per_read;
+	if ((getFileExt(argv[2]) == ".fasta") || (getFileExt(argv[2]) == ".fa"))
+	{
+		num_lines_per_read = 2;
+	}
+	if ((getFileExt(argv[2]) == ".fastq") || (getFileExt(argv[2]) == ".fq"))
+	{
+		num_lines_per_read = 4;
+	}
+	
 	std::string header;
-	//currently assuming input is fastq format
-	//output is fasta format
 	while (getline(input_file, line))
 	{
 		line_num++;
 		//if on line with the header
-		//if (line_num % 2 == 0)
-		if (line_num % 4 == 0)
+		if (line_num % num_lines_per_read == 0)
 		{
-			//write read header to err output file and het output file
-			//save header
-			header = line;
-			//err_output_file << line << '\n';
-			//het_output_file << line << '\n';
+			//save header, but make sure it is a fasta header, not a fastq header
+			header = ">" + line.substr(1);
 		}
 		//if on line with the read
-		if (line_num % 4 == 1)
-		//if (line_num % 2 == 1)
+		if (line_num % num_lines_per_read == 1)
 		{
 			std::string read = line;
-			//int read_number = (line_num+1)/2;
-			int read_number = (line_num+3)/4;
+			int read_number = (line_num+num_lines_per_read-1)/num_lines_per_read;
 			if (read_number%10000==0)
 			{
 				std::cout << read_number << '\n';
@@ -814,20 +836,26 @@ int main(int argc, char* argv[])
 			int num_kmers = v.size();
 			
 			//check if too many error kmers
-			//if greater than 25% of kmers in the read are errors
+			//if greater than allowed_err_fraction of kmers in the read are errors
 			//discard the read to not waste time
-			int num_err = std::count_if(v.begin(), v.end(), IsErr);
+			//int num_err = std::count_if(v.begin(), v.end(), IsErr);
+			int num_err = 0;
+			for (int i = 0; i < v.size(); i++)
+			{
+				if (v[i] <= error_threshold)
+				{
+					num_err++;
+				}
+			}
 			double err_fraction = static_cast<double>(num_err)/num_kmers;
-			if (err_fraction >= 0.25)
+			if (err_fraction >= allowed_err_fraction)
 			{
 				//std::cout << "read number " << read_number << " has " << err_fraction << " percent error kmers, discarding." << '\n';
-				//err_output_file << "N" << '\n';
-				//het_output_file << "N" << '\n';
 				continue;
 			}
 
 			//remove errors from the read to get edited read
-			std::string edited_read = remove_err(v, read, read_number, file, erredits_output_file, errpaths_output_file);
+			std::string edited_read = remove_err(v, read, read_number, file, erredits_output_file, errpaths_output_file, error_threshold, het_threshold, unique_threshold, max_nodes_to_search, distance_multiplier);
 
 			//write header and edited read to err_output_file
 			err_output_file << header << '\n';
@@ -839,21 +867,28 @@ int main(int argc, char* argv[])
 			num_kmers = v.size();
 
 			//check if too many repetitive kmers
-			//if greater than 25% of kmers in the edited read are repetitive
+			//if greater than allowed_rep_fraction of kmers in the edited read are repetitive
 			//discard the read to not waste time
-			int num_rep = std::count_if(v.begin(), v.end(), IsRep);
+			//int num_rep = std::count_if(v.begin(), v.end(), IsRep);
+			int num_rep = 0;
+			for (int i = 0; i < v.size(); i++)
+			{
+				if (v[i] > unique_threshold)
+				{
+					num_rep++;
+				}
+			}
 			double rep_fraction = static_cast<double>(num_rep)/num_kmers;
-			if (rep_fraction >= 0.25)
+			if (rep_fraction >= allowed_rep_fraction)
 			{
 				//std::cout << "read number " << read_number << " has " << rep_fraction << " percent repetitive kmers, discarding." << '\n';
-				//het_output_file << "N" << '\n';
 				het_output_file << header << '\n';
 				het_output_file << edited_read << '\n';
 				continue;
 			}
 
 			//smoothe het from the edited read to get smoothed read
-			std::string smoothed_read = smooth_het(v, edited_read, read_number, file, hetedits_output_file, hetpaths_output_file);
+			std::string smoothed_read = smooth_het(v, edited_read, read_number, file, hetedits_output_file, hetpaths_output_file, error_threshold, het_threshold, unique_threshold, max_nodes_to_search, distance_multiplier);
 
 			//write header and smoothed read to het_output_file
 			het_output_file << header << '\n';
