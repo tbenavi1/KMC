@@ -124,7 +124,7 @@ bool is_right_anchor(std::string& current_kmer, int& current_count, int& k, CKMC
 	}
 }
 
-int get_type_het(int& previous_type, std::string& previous_kmer, std::string& current_kmer, int& previous_count, int& current_count, int& k, CKMCFile& file, int& error_threshold, int& het_threshold, int& unique_threshold)
+int get_type_het(int& previous_type, std::string& previous_kmer, std::string& current_kmer, int& previous_count, int& current_count, int& k, CKMCFile& file, int& error_threshold, int& het_threshold, int& unique_threshold, std::string& anchor_found, std::string& previous_anchor_found)
 {
 	//If previously at the beginning of the read
 	if (previous_type == -1)
@@ -133,14 +133,24 @@ int get_type_het(int& previous_type, std::string& previous_kmer, std::string& cu
 		if ((current_count < (previous_count - error_threshold)) && is_left_anchor(previous_kmer, previous_count, k, file, error_threshold, het_threshold, unique_threshold))
 		{
 			//we have left the hom region
-			//std::cout << "left anchor" << '\n';
+			std::cout << "previous was left anchor" << '\n';
+			//if (anchor_found != "none")
+			//{
+			//	previous_anchor_found = anchor_found;
+			//}
+			anchor_found == "left";
 			return 1;
 		}
 		//if current kmer is a right anchor
 		if ((current_count > (previous_count + error_threshold)) && is_right_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold))
 		{
 			//we have left the nonhom region
-			//std::cout << "right anchor" <<'\n';
+			std::cout << "current is right anchor" <<'\n';
+			//if (anchor_found != "none")
+			//{
+			//previous_anchor_found = anchor_found;
+			//}
+			anchor_found = "right";
 			return 2;
 		}
 		//else we continue the beginning of the read
@@ -150,35 +160,69 @@ int get_type_het(int& previous_type, std::string& previous_kmer, std::string& cu
 		//determine whether the kmer is homozygous or not
 		if ((het_threshold < current_count) && (current_count <= unique_threshold))
 		{
+			if (anchor_found != "none")
+			{
+			previous_anchor_found = anchor_found;
+			}
+			anchor_found = "none"; // is this right?
 			return 2;
 		}
 		else
 		{
+			if (anchor_found != "none")
+			{
+			previous_anchor_found = anchor_found;
+			}
+			anchor_found = "none"; // is this right?
 			return 1;
 		}
 	}
 	//If previously in a nonhomozygous region
 	if (previous_type == 1)
 	{
-		//If previous kmer is a left anchor
-		if ((current_count < (previous_count - error_threshold)) && is_left_anchor(previous_kmer, previous_count, k, file, error_threshold, het_threshold, unique_threshold))
-		//If current kmer is a left anchor
-		//if (is_left_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold))
-		{
-			//this is a weird case where we find two left anchors in a row before a right anchor
-			//std::cout << "we found two left anchors in a row" << '\n';
-		}
 		//If current kmer is a right anchor
 		if ((current_count > (previous_count + error_threshold)) && is_right_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold))
 		{
 			//we have left the nonhom region
-			//std::cout << "right anchor" << '\n';
+			std::cout << "current is right anchor" << '\n';
+			//if (anchor_found != "none")
+			//{
+			//previous_anchor_found = anchor_found;
+			//}
+			anchor_found = "right";
 			return 2;
 		}
+		//If previous kmer is a left anchor
+		//if ((current_count < (previous_count - error_threshold)) && is_left_anchor(previous_kmer, previous_count, k, file, error_threshold, het_threshold, unique_threshold))
+		//If current kmer is a left anchor
+		else if (is_left_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold))
+		{
+			//this is a weird case where we find two left anchors in a row before a right anchor
+			std::cout << "we found two left anchors in a row" << '\n';
+			//if (anchor_found != "none")
+			//{
+			//previous_anchor_found = anchor_found;
+			//}
+			anchor_found = "left";
+			return 2;
+		}
+		//If current kmer is a right anchor
+		//if ((current_count > (previous_count + error_threshold)) && is_right_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold))
+		//{
+		//	//we have left the nonhom region
+		//	std::cout << "current is right anchor" << '\n';
+		//	anchor_found = "right";
+		//	return 2;
+		//}
 		//else current kmer is not a right anchor
 		else
 		{
 			//we continue the nonhom region
+			if (anchor_found != "none")
+			{
+			previous_anchor_found = anchor_found;
+			}
+			anchor_found = "none";
 			return 1;
 		}
 	}
@@ -189,19 +233,40 @@ int get_type_het(int& previous_type, std::string& previous_kmer, std::string& cu
 		if ((current_count > (previous_count + error_threshold)) && is_right_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold))
 		{
 			//this is a weird case where we find two right anchors in a row before a left anchor
-			//std::cout << "we found two right anchors in a row" << '\n';
+			std::cout << "we found two right anchors in a row" << '\n';
+		}
+		//If current kmer is a left anchor
+		if (is_left_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold))
+		{
+			std::cout << "current is left anchor" << '\n';
+			//if (anchor_found != "none")
+			//{
+			//previous_anchor_found = anchor_found;
+			//}
+			anchor_found = "left";
+			return 2; //do I need this here?
 		}
 		//If previous kmer is a left anchor
-		if ((current_count < (previous_count - error_threshold)) && is_left_anchor(previous_kmer, previous_count, k, file, error_threshold, het_threshold, unique_threshold))
+		else if ((current_count < (previous_count - error_threshold)) && is_left_anchor(previous_kmer, previous_count, k, file, error_threshold, het_threshold, unique_threshold)) // do I need the else here?
 		{
 			//we have left the hom region
-			//std::cout << "left anchor" << '\n';
+			//std::cout << "previous was left anchor" << '\n';
+			//if (anchor_found != "none")
+			//{
+			//previous_anchor_found = anchor_found;
+			//}
+			anchor_found = "left";
 			return 1;
 		}
-		//else previous kmer is not a left anchor
+		//else previous kmer is not a left anchor (and current kmer is not a left anchor)
 		else
 		{
 			//we continue the hom region
+			if (anchor_found != "none")
+			{
+			previous_anchor_found = anchor_found;
+			}
+			anchor_found = "none";
 			return 2;
 		}
 	}
@@ -440,6 +505,7 @@ void write_nonhom_paths(bool& queue_broken, std::vector<std::string>& smoothed_n
 			alternate_smoothed_nonhom_portion = smoothed_nonhom_portion0;
 		}
 		smoothed_read += left_part + primary_smoothed_nonhom_portion;
+		std::cout << left_part + primary_smoothed_nonhom_portion << '\n';
 		smoothed_nonhom_portions[0] = primary_smoothed_nonhom_portion;
 		smoothed_nonhom_portions[1] = alternate_smoothed_nonhom_portion;
 	}
@@ -449,6 +515,7 @@ void write_nonhom_paths(bool& queue_broken, std::vector<std::string>& smoothed_n
 	{
 		hetwrite_output_file = &hetpaths_output_file;
 		smoothed_read += left_part + original_nonhom_portion;
+		std::cout << left_part + original_nonhom_portion << '\n';
 	}
 	std::string original_nonhom_block = before_first_nonhom_kmer + original_nonhom_portion + after_last_nonhom_kmer;
 	*hetwrite_output_file << ">read" << read_number << "_firstnonhomkmer" << first_nonhom_idx << "_lastnonhomkmer" << last_nonhom_idx << "_original" << '\n';
@@ -623,7 +690,7 @@ std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_n
 	std::string after_last_nonhom_kmer;
 	for (int i = 0; i < v.size(); i++)
 	{
-		//std::cout << i << '\n';
+		std::cout << i << '\t' << v[i] << '\n';
 		//int current_type = get_type(v[i], error_threshold, het_threshold, unique_threshold);
 		std::string previous_kmer;
 		int previous_count;
@@ -644,7 +711,18 @@ std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_n
 		std::vector<uint32_t> current_count_vector;
 		file.GetCountersForRead(current_kmer, current_count_vector);
 		int current_count = current_count_vector[0];
-		int current_type = get_type_het(previous_type, previous_kmer, current_kmer, previous_count, current_count, k, file, error_threshold, het_threshold, unique_threshold);
+		std::string anchor_found;
+		std::string previous_anchor_found;
+		int current_type = get_type_het(previous_type, previous_kmer, current_kmer, previous_count, current_count, k, file, error_threshold, het_threshold, unique_threshold, anchor_found, previous_anchor_found);
+		//int current_type;
+		//if (i==0)
+		//{
+		//	current_type = 2;
+		//}
+		//else
+		//{
+		//	current_type = 1;
+		//}
 		//if kmer is nonhom
 		if ((current_type == 0) || (current_type == 1) || (current_type == 3))
 		{
@@ -668,6 +746,7 @@ std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_n
 				before_first_nonhom_kmer = read.substr(i-1, k);
 				std::string hom_portion = read.substr(first_hom_idx, last_hom_idx - first_hom_idx + 1);
 				smoothed_read += hom_portion;
+				std::cout << hom_portion << '\n';
 			}
 			previous_type = current_type;
 		}
@@ -698,11 +777,32 @@ std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_n
 			//if previous kmer was nonhom, we have left the nonhom block
 			if (((previous_type == 0) || (previous_type == 1) || (previous_type == 3)) && !before_first_nonhom_kmer.empty())
 			{
+				if (anchor_found == "left")
+				{
+					after_last_nonhom_kmer = read.substr(i, k);
+					std::string hom_portion;
+					if (previous_anchor_found == "left")
+					{
+						hom_portion = read.substr(first_hom_idx+1, i-first_hom_idx-1);
+					}
+					else
+					{
+						std::cout << "OMG!" << '\n';
+						hom_portion = read.substr(first_hom_idx+1, i-first_hom_idx-1);
+					}
+					std::cout << hom_portion << '\n';
+					last_nonhom_idx = i-1;
+					first_hom_idx = i;
+					smoothed_read += hom_portion;
+				}
+				else
+				{
 				int number_of_nonhom_kmers = i - first_nonhom_idx;
 				//If the position of after_last_nonhom_kmer overlaps before_first_nonhom_kmer
 				//we keep progressing as if nothing has happened, waiting to find another hom kmer
-				if (number_of_nonhom_kmers < k)
+				if ((anchor_found == "right") && (number_of_nonhom_kmers < k))
 				{
+					std::cout << "left anchor and right anchor overlap" << '\n';
 					current_type = previous_type;
 					continue;
 				}
@@ -717,11 +817,20 @@ std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_n
 				first_hom_idx = i;
 				std::string original_nonhom_portion = read.substr(first_nonhom_idx+k-1, last_nonhom_idx - first_nonhom_idx + 2 - k);
 				write_nonhom_paths(queue_broken, smoothed_nonhom_portions, hetedits_output_file, hetpaths_output_file, smoothed_read, read_number, first_nonhom_idx, last_nonhom_idx, before_first_nonhom_kmer, original_nonhom_portion, after_last_nonhom_kmer, file);
+				}
 			}
 			//if previous kmer is hom, we are continuing a hom block
 			if (previous_type == 2)
 			{
-				;
+				if (anchor_found == "left")
+				{
+					std::string hom_portion = read.substr(first_hom_idx, i-first_hom_idx);
+					smoothed_read += hom_portion;
+					std::cout << hom_portion << '\n';
+					std::cout << "this is new" << '\n';
+					first_hom_idx=i;
+					last_nonhom_idx=i-1;
+				}
 			}
 			previous_type = current_type;
 		}
@@ -736,6 +845,7 @@ std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_n
 			after_last_nonhom_kmer = "";
 			int min_distance_of_path = 0;
 			int max_distance_of_path = v.size()-first_nonhom_idx;
+			//max_distance_of_path = 50;
 			//int max_nodes_to_search = 1000;
 			bool queue_broken = false;
 			std::vector<std::string> smoothed_nonhom_portions = get_paths(file, error_threshold, het_threshold, unique_threshold, before_first_nonhom_kmer, after_last_nonhom_kmer, min_distance_of_path, max_distance_of_path, max_nodes_to_search, k, queue_broken);
@@ -756,6 +866,7 @@ std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_n
 		last_hom_idx = v.size()-1;
 		std::string hom_portion = read.substr(first_hom_idx, last_hom_idx - first_hom_idx + k);
 		smoothed_read += hom_portion;
+		std::cout << hom_portion << '\n';
 	}
 	smoothed_read += '\n';
 	return smoothed_read;
