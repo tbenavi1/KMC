@@ -14,8 +14,8 @@ int main(int argc, char* argv[]) {
 	file.GetCountersForRead(argv[2],v);
 	
 	for (auto c : v) {
-		std::cout << c << " ";
+		std::cout << c << "\n";
 	}
-	std::cout << '\n';
+	//std::cout << '\n';
 	return 0;
 }

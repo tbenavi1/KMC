@@ -11,6 +11,8 @@
 #include <stdlib.h>
 #include <vector>
 
+//smooth kmcdb reads.fastq errremoved.fasta erredits.fasta errpaths.fasta hetremoved.fasta hetedits.fasta hetpath1.fasta hetpath2.fasta hetpath3.fasta hetpath4.fasta hetpath5.fasta hetpath6.fasta error_threshold het_threshold unique_threshold anchor_threshold allowed_err_fraction allowed_rep_fraction max_nodes_to_search distance_multiplier strict > counts.txt
+
 int get_type(uint32_t& coverage, int& error_threshold, int& het_threshold, int& unique_threshold)
 {
 	if (coverage <= error_threshold)
@@ -58,9 +60,9 @@ std::vector<std::string> get_adjacent(CKMCFile& file, std::string& kmer, int& er
 	return adjacent_kmers;
 }
 
-bool is_left_anchor(std::string& previous_kmer, int& previous_count, int& k, CKMCFile& file, int& error_threshold, int& het_threshold, int& unique_threshold)
+bool is_left_anchor(std::string& previous_kmer, int& previous_count, int& k, CKMCFile& file, int& error_threshold, int& het_threshold, int& unique_threshold, int& anchor_threshold)
 {
-	if ((previous_kmer.length() != k) || (previous_count > unique_threshold))
+	if ((previous_kmer.length() != k) || (previous_count > anchor_threshold)) // > unique_threshold
 	//if (previous_kmer.length() != k)
 	{
 		return false;
@@ -91,9 +93,9 @@ bool is_left_anchor(std::string& previous_kmer, int& previous_count, int& k, CKM
 	}
 }
 
-bool is_right_anchor(std::string& current_kmer, int& current_count, int& k, CKMCFile& file, int& error_threshold, int& het_threshold, int& unique_threshold)
+bool is_right_anchor(std::string& current_kmer, int& current_count, int& k, CKMCFile& file, int& error_threshold, int& het_threshold, int& unique_threshold, int& anchor_threshold)
 {
-	if ((current_kmer.length() != k) || (current_count > unique_threshold))
+	if ((current_kmer.length() != k) || (current_count > anchor_threshold)) // > unique_threshold
 	//if (current_kmer.length() != k)
 	{
 		return false;
@@ -124,20 +126,20 @@ bool is_right_anchor(std::string& current_kmer, int& current_count, int& k, CKMC
 	}
 }
 
-int get_type_het(int& previous_type, std::string& previous_kmer, std::string& current_kmer, int& previous_count, int& current_count, int& k, CKMCFile& file, int& error_threshold, int& het_threshold, int& unique_threshold, std::string& anchor_found)
+int get_type_het(int& previous_type, std::string& previous_kmer, std::string& current_kmer, int& previous_count, int& current_count, int& k, CKMCFile& file, int& error_threshold, int& het_threshold, int& unique_threshold, int& anchor_threshold, std::string& anchor_found)
 {
 	//If "previously" at the beginning of the read
 	if (previous_type == -1)
 	{
 		//if current kmer is a right anchor
-		if ((current_count > (previous_count + error_threshold)) && is_right_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold))
+		if ((current_count > (previous_count + error_threshold)) && is_right_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold, anchor_threshold))
 		{
 			//std::cout << "current is right anchor" << '\n';
 			anchor_found = "right";
 			return 2;
 		}
 		//if current kmer is a left anchor
-		if (is_left_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold))
+		if (is_left_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold, anchor_threshold))
 		{
 			//std::cout << "current is left anchor" << '\n';
 			anchor_found = "left";
@@ -161,7 +163,7 @@ int get_type_het(int& previous_type, std::string& previous_kmer, std::string& cu
 	if (previous_type == 1)
 	{
 		//If current kmer is a right anchor
-		if ((current_count > (previous_count + error_threshold)) && is_right_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold))
+		if ((current_count > (previous_count + error_threshold)) && is_right_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold, anchor_threshold))
 		{
 			//we have left the nonhom region
 			//std::cout << "current is right anchor" << '\n';
@@ -169,7 +171,7 @@ int get_type_het(int& previous_type, std::string& previous_kmer, std::string& cu
 			return 2;
 		}
 		//If current kmer is a left anchor
-		if (is_left_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold))
+		if (is_left_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold, anchor_threshold))
 		{
 			//this is a weird case where we find two left anchors in a row before a right anchor
 			//std::cout << "we found two left anchors in a row" << '\n';
@@ -188,7 +190,7 @@ int get_type_het(int& previous_type, std::string& previous_kmer, std::string& cu
 	if (previous_type == 2)
 	{
 		//If current kmer is a right anchor
-		//if ((current_count > (previous_count + error_threshold)) && is_right_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold))
+		//if ((current_count > (previous_count + error_threshold)) && is_right_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold, anchor_threshold))
 		//{
 			//this is a weird case where we find two right anchors in a row before a left anchor
 			//we don't need to set anchor_found or return 2 because we really care
@@ -196,14 +198,14 @@ int get_type_het(int& previous_type, std::string& previous_kmer, std::string& cu
 			//std::cout << "we found two right anchors in a row" << '\n';
 		//}
 		//If current kmer is a left anchor
-		if (is_left_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold))
+		if (is_left_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold, anchor_threshold))
 		{
 			//std::cout << "current is left anchor" << '\n';
 			anchor_found = "left";
 			return 2;
 		}
 		//If previous kmer is a left anchor
-		if ((current_count < (previous_count - error_threshold)) && is_left_anchor(previous_kmer, previous_count, k, file, error_threshold, het_threshold, unique_threshold))
+		if ((current_count < (previous_count - error_threshold)) && is_left_anchor(previous_kmer, previous_count, k, file, error_threshold, het_threshold, unique_threshold, anchor_threshold))
 		{
 			//we have left the hom region
 			//std::cout << "previous was left anchor" << '\n';
@@ -443,53 +445,12 @@ void write_nonhom_paths(bool& queue_broken, std::vector<std::string>& smoothed_n
 	}
 	if (end_condition)
 	{
-		//hetwrite_output_file = &hetedits_output_file;
-		//std::sort(smoothed_nonhom_portions.begin(), smoothed_nonhom_portions.end(), is_less_than);
-		//float best_average = 0;
-		//std::string primary_smoothed_nonhom_portion;
-		//std::string alternate_smoothed_nonhom_portion;
-		//for (auto smoothed_nonhom_portion : smoothed_nonhom_portions)
-		//{
-		//std::string smoothed_nonhom_portion0 = smoothed_nonhom_portions[0];
-		//std::string smoothed_nonhom_portion1 = smoothed_nonhom_portions[1];
-		//std::vector<uint32_t> w;
-		//file.GetCountersForRead(left_part + smoothed_nonhom_portion + right_part, w);
-		//float average = std::accumulate(w.begin(), w.end(), 0.0)/w.size();
-		//if (average > best_average)
-		//{
-		//	best_average = average;
-		//	primary_smoothed_nonhom_portion = smoothed_nonhom_portion;
-			//alternate_smoothed_nonhom_portion = smoothed_nonhom_portion;
-		//}
-		//file.GetCountersForRead(left_part + smoothed_nonhom_portion1 + right_part, w);
-		//float average1 = std::accumulate(w.begin(), w.end(), 0.0)/w.size();
-		//}
-		//std::string primary_smoothed_nonhom_portion;
-		//std::string alternate_smoothed_nonhom_portion;
-		//if (average0 > average1)
-		//{
-		//	primary_smoothed_nonhom_portion = smoothed_nonhom_portion0;
-		//	alternate_smoothed_nonhom_portion = smoothed_nonhom_portion1;
-		//}
-		//else
-		//{
-		//	primary_smoothed_nonhom_portion = smoothed_nonhom_portion1;
-		//	alternate_smoothed_nonhom_portion = smoothed_nonhom_portion0;
-		//}
-//		smoothed_read += left_part + primary_smoothed_nonhom_portion;
 		smoothed_read += left_part + smoothed_nonhom_portions[0];
-		//std::cout << left_part + primary_smoothed_nonhom_portion << '\n';
-		//smoothed_nonhom_portions[0] = primary_smoothed_nonhom_portion;
-		//smoothed_nonhom_portions[1] = alternate_smoothed_nonhom_portion;
-		//std::vector<std::string> smoothed_nonhom_portions;
-//		smoothed_nonhom_portions.clear();
-//		smoothed_nonhom_portions.push_back(primary_smoothed_nonhom_portion);
 	}
 	//there is not exactly two paths, or the search wasn't finished.
 	//We are currently not smoothing.
 	else
 	{
-		//hetwrite_output_file = &hetpaths_output_file;
 		smoothed_read += left_part + original_nonhom_portion;
 		//std::cout << left_part + original_nonhom_portion << '\n';
 	}
@@ -665,7 +626,7 @@ std::string remove_err (std::vector<uint32_t>& v, std::string& read, int& read_n
 	return edited_read;
 }
 
-std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_number, CKMCFile& file, std::ofstream& hetedits_output_file, std::ofstream& hetpaths1_output_file, std::ofstream& hetpaths2_output_file, std::ofstream& hetpaths3_output_file, std::ofstream& hetpaths4_output_file, std::ofstream& hetpaths5_output_file, std::ofstream& hetpaths6_output_file, int& error_threshold, int& het_threshold, int& unique_threshold, int& max_nodes_to_search, double& distance_multiplier, int& strict)
+std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_number, CKMCFile& file, std::ofstream& hetedits_output_file, std::ofstream& hetpaths1_output_file, std::ofstream& hetpaths2_output_file, std::ofstream& hetpaths3_output_file, std::ofstream& hetpaths4_output_file, std::ofstream& hetpaths5_output_file, std::ofstream& hetpaths6_output_file, int& error_threshold, int& het_threshold, int& unique_threshold, int& anchor_threshold, int& max_nodes_to_search, double& distance_multiplier, int& strict)
 {
 	//initialize variables
 	std::string smoothed_read;
@@ -701,7 +662,7 @@ std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_n
 		file.GetCountersForRead(current_kmer, current_count_vector);
 		int current_count = current_count_vector[0];
 		std::string anchor_found;
-		int current_type = get_type_het(previous_type, previous_kmer, current_kmer, previous_count, current_count, k, file, error_threshold, het_threshold, unique_threshold, anchor_found);
+		int current_type = get_type_het(previous_type, previous_kmer, current_kmer, previous_count, current_count, k, file, error_threshold, het_threshold, unique_threshold, anchor_threshold, anchor_found);
 		//if kmer is nonhom
 		if ((current_type == 0) || (current_type == 1) || (current_type == 3))
 		{
@@ -870,11 +831,12 @@ int main(int argc, char* argv[])
 	int error_threshold = atoi(argv[14]);
 	int het_threshold = atoi(argv[15]);
 	int unique_threshold = atoi(argv[16]);
-	double allowed_err_fraction = std::stod(argv[17]);
-	double allowed_rep_fraction = std::stod(argv[18]);
-	int max_nodes_to_search = atoi(argv[19]);
-	double distance_multiplier = std::stod(argv[20]);
-	int strict = atoi(argv[21]);
+	int anchor_threshold = atoi(argv[17]);
+	double allowed_err_fraction = std::stod(argv[18]);
+	double allowed_rep_fraction = std::stod(argv[19]);
+	int max_nodes_to_search = atoi(argv[20]);
+	double distance_multiplier = std::stod(argv[21]);
+	int strict = atoi(argv[22]);
 
 	//load reads
 	int line_num = -1;
@@ -953,11 +915,13 @@ int main(int argc, char* argv[])
 			int num_rep = 0;
 			for (int i = 0; i < v.size(); i++)
 			{
+				//std::cout << v[i] << ' ';
 				if (v[i] > unique_threshold)
 				{
 					num_rep++;
 				}
 			}
+			//std::cout << '\n';
 			double rep_fraction = static_cast<double>(num_rep)/num_kmers;
 			if (rep_fraction >= allowed_rep_fraction)
 			{
@@ -968,7 +932,7 @@ int main(int argc, char* argv[])
 			}
 
 			//smoothe het from the edited read to get smoothed read
-			std::string smoothed_read = smooth_het(v, edited_read, read_number, file, hetedits_output_file, hetpaths1_output_file, hetpaths2_output_file, hetpaths3_output_file, hetpaths4_output_file, hetpaths5_output_file, hetpaths6_output_file, error_threshold, het_threshold, unique_threshold, max_nodes_to_search, distance_multiplier, strict);
+			std::string smoothed_read = smooth_het(v, edited_read, read_number, file, hetedits_output_file, hetpaths1_output_file, hetpaths2_output_file, hetpaths3_output_file, hetpaths4_output_file, hetpaths5_output_file, hetpaths6_output_file, error_threshold, het_threshold, unique_threshold, anchor_threshold, max_nodes_to_search, distance_multiplier, strict);
 
 			//write header and smoothed read to het_output_file
 			het_output_file << header << '\n';
