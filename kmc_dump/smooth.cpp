@@ -817,26 +817,27 @@ int main(int argc, char* argv[])
 	//initialize file streams
 	std::string line;
 	std::ifstream input_file(argv[2]);
-	std::ofstream err_output_file(argv[3]);
-	std::ofstream erredits_output_file(argv[4]);
-	std::ofstream errpaths_output_file(argv[5]);
-	std::ofstream het_output_file(argv[6]);
-	std::ofstream hetedits_output_file(argv[7]);
-	std::ofstream hetpaths1_output_file(argv[8]);
-	std::ofstream hetpaths2_output_file(argv[9]);
-	std::ofstream hetpaths3_output_file(argv[10]);
-	std::ofstream hetpaths4_output_file(argv[11]);
-	std::ofstream hetpaths5_output_file(argv[12]);
-	std::ofstream hetpaths6_output_file(argv[13]);
-	int error_threshold = atoi(argv[14]);
-	int het_threshold = atoi(argv[15]);
-	int unique_threshold = atoi(argv[16]);
-	int anchor_threshold = atoi(argv[17]);
-	double allowed_err_fraction = std::stod(argv[18]);
-	double allowed_rep_fraction = std::stod(argv[19]);
-	int max_nodes_to_search = atoi(argv[20]);
-	double distance_multiplier = std::stod(argv[21]);
-	int strict = atoi(argv[22]);
+	std::string outdir = argv[3];
+	std::ofstream err_output_file(outdir+"errremoved.fasta");
+	std::ofstream erredits_output_file(outdir+"erredits.fasta");
+	std::ofstream errpaths_output_file(outdir+"errpaths.fasta");
+	std::ofstream het_output_file(outdir+"hetremoved.fasta");
+	std::ofstream hetedits_output_file(outdir+"hetedits.fasta");
+	std::ofstream hetpaths1_output_file(outdir+"hetpath1.fasta");
+	std::ofstream hetpaths2_output_file(outdir+"hetpath2.fasta");
+	std::ofstream hetpaths3_output_file(outdir+"hetpath3.fasta");
+	std::ofstream hetpaths4_output_file(outdir+"hetpath4.fasta");
+	std::ofstream hetpaths5_output_file(outdir+"hetpath5.fasta");
+	std::ofstream hetpaths6_output_file(outdir+"hetpath6.fasta");
+	int error_threshold = atoi(argv[4]);
+	int het_threshold = atoi(argv[5]);
+	int unique_threshold = atoi(argv[6]);
+	int anchor_threshold = atoi(argv[7]);
+	double allowed_err_fraction = std::stod(argv[8]);
+	double allowed_rep_fraction = std::stod(argv[9]);
+	int max_nodes_to_search = atoi(argv[10]);
+	double distance_multiplier = std::stod(argv[11]);
+	int strict = atoi(argv[12]);
 
 	//load reads
 	int line_num = -1;
@@ -915,13 +916,13 @@ int main(int argc, char* argv[])
 			int num_rep = 0;
 			for (int i = 0; i < v.size(); i++)
 			{
-				//std::cout << v[i] << ' ';
+				std::cout << v[i] << ' ';
 				if (v[i] > unique_threshold)
 				{
 					num_rep++;
 				}
 			}
-			//std::cout << '\n';
+			std::cout << '\n';
 			double rep_fraction = static_cast<double>(num_rep)/num_kmers;
 			if (rep_fraction >= allowed_rep_fraction)
 			{
