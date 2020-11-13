@@ -503,11 +503,11 @@ void write_nonhom_paths(bool& queue_broken, std::vector<std::string>& smoothed_n
 	}
 }
 
-std::string remove_err (std::vector<uint32_t>& v, std::string& read, int& read_number, CKMCFile& file, std::ofstream& erredits_output_file, std::ofstream& errpaths_output_file, int& error_threshold, int& het_threshold, int& unique_threshold, int& max_nodes_to_search, double& distance_multiplier)
+std::string remove_err (std::vector<uint32_t>& v, std::string& read, int& read_number, CKMCFile& file, std::ofstream& erredits_output_file, std::ofstream& errpaths_output_file, int& error_threshold, int& het_threshold, int& unique_threshold, int& max_nodes_to_search, double& distance_multiplier, int& k)
 {
 	//initialize variables
 	std::string edited_read;
-	int k = 21;
+	//int k = 21;
 
 	//iterate over counts to edit errors
 	int previous_type = -1;
@@ -626,11 +626,11 @@ std::string remove_err (std::vector<uint32_t>& v, std::string& read, int& read_n
 	return edited_read;
 }
 
-std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_number, CKMCFile& file, std::ofstream& hetedits_output_file, std::ofstream& hetpaths1_output_file, std::ofstream& hetpaths2_output_file, std::ofstream& hetpaths3_output_file, std::ofstream& hetpaths4_output_file, std::ofstream& hetpaths5_output_file, std::ofstream& hetpaths6_output_file, int& error_threshold, int& het_threshold, int& unique_threshold, int& anchor_threshold, int& max_nodes_to_search, double& distance_multiplier, int& strict)
+std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_number, CKMCFile& file, std::ofstream& hetedits_output_file, std::ofstream& hetpaths1_output_file, std::ofstream& hetpaths2_output_file, std::ofstream& hetpaths3_output_file, std::ofstream& hetpaths4_output_file, std::ofstream& hetpaths5_output_file, std::ofstream& hetpaths6_output_file, int& error_threshold, int& het_threshold, int& unique_threshold, int& anchor_threshold, int& max_nodes_to_search, double& distance_multiplier, int& strict, int& k)
 {
 	//initialize variables
 	std::string smoothed_read;
-	int k = 21;
+	//int k = 21;
 
 	//iterate over counts to smoothe het
 	int previous_type = -1;
@@ -838,6 +838,7 @@ int main(int argc, char* argv[])
 	int max_nodes_to_search = atoi(argv[10]);
 	double distance_multiplier = std::stod(argv[11]);
 	int strict = atoi(argv[12]);
+	int k = atoi(argv[13]);
 
 	//load reads
 	int line_num = -1;
@@ -899,7 +900,7 @@ int main(int argc, char* argv[])
 			}
 
 			//remove errors from the read to get edited read
-			std::string edited_read = remove_err(v, read, read_number, file, erredits_output_file, errpaths_output_file, error_threshold, het_threshold, unique_threshold, max_nodes_to_search, distance_multiplier);
+			std::string edited_read = remove_err(v, read, read_number, file, erredits_output_file, errpaths_output_file, error_threshold, het_threshold, unique_threshold, max_nodes_to_search, distance_multiplier, k);
 
 			//write header and edited read to err_output_file
 			err_output_file << header << '\n';
@@ -933,7 +934,7 @@ int main(int argc, char* argv[])
 			}
 
 			//smoothe het from the edited read to get smoothed read
-			std::string smoothed_read = smooth_het(v, edited_read, read_number, file, hetedits_output_file, hetpaths1_output_file, hetpaths2_output_file, hetpaths3_output_file, hetpaths4_output_file, hetpaths5_output_file, hetpaths6_output_file, error_threshold, het_threshold, unique_threshold, anchor_threshold, max_nodes_to_search, distance_multiplier, strict);
+			std::string smoothed_read = smooth_het(v, edited_read, read_number, file, hetedits_output_file, hetpaths1_output_file, hetpaths2_output_file, hetpaths3_output_file, hetpaths4_output_file, hetpaths5_output_file, hetpaths6_output_file, error_threshold, het_threshold, unique_threshold, anchor_threshold, max_nodes_to_search, distance_multiplier, strict, k);
 
 			//write header and smoothed read to het_output_file
 			het_output_file << header << '\n';
