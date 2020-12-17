@@ -873,7 +873,7 @@ int main(int argc, char* argv[])
 			int read_number = (line_num+num_lines_per_read-1)/num_lines_per_read;
 			if (read_number%10000==0)
 			{
-				std::cout << read_number << '\n';
+				//std::cout << read_number << '\n';
 			}
 			
 			//get counters of kmers in read
@@ -887,11 +887,14 @@ int main(int argc, char* argv[])
 			int num_err = 0;
 			for (int i = 0; i < v.size(); i++)
 			{
+				//std::cout << v[i] << ' ';
 				if (v[i] <= error_threshold)
 				{
 					num_err++;
 				}
 			}
+			//std::cout << '\n';
+			//continue;
 			double err_fraction = static_cast<double>(num_err)/num_kmers;
 			if (err_fraction >= allowed_err_fraction)
 			{
@@ -906,6 +909,7 @@ int main(int argc, char* argv[])
 			err_output_file << header << '\n';
 			err_output_file << edited_read;
 			edited_read.pop_back();
+			continue;
 
 			//get counters of kmers in edited read
 			file.GetCountersForRead(edited_read, v);
@@ -917,13 +921,14 @@ int main(int argc, char* argv[])
 			int num_rep = 0;
 			for (int i = 0; i < v.size(); i++)
 			{
-				std::cout << v[i] << ' ';
+				//std::cout << v[i] << ' ';
 				if (v[i] > unique_threshold)
 				{
 					num_rep++;
 				}
 			}
-			std::cout << '\n';
+			//std::cout << '\n';
+			//continue;
 			double rep_fraction = static_cast<double>(num_rep)/num_kmers;
 			if (rep_fraction >= allowed_rep_fraction)
 			{
