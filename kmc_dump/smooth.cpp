@@ -3,6 +3,7 @@
 #include "nc_utils.h"
 #include "stdafx.h"
 #include <algorithm>
+#include <ctime>
 #include <fstream>
 #include <iostream>
 #include <list>
@@ -812,7 +813,11 @@ int main(int argc, char* argv[])
 {
 	//load KMC database
 	CKMCFile file;
+	std::time_t result = std::time(nullptr);
+	std::cout << "Loading KMC database at " << std::asctime(std::localtime(&result)) << '\n';
 	file.OpenForRA(argv[1]);
+	result = std::time(nullptr);
+	std::cout << "KMC database loaded at " << std::asctime(std::localtime(&result)) << '\n';
 	
 	//initialize file streams
 	std::string line;
@@ -871,6 +876,8 @@ int main(int argc, char* argv[])
 		{
 			std::string read = line;
 			int read_number = (line_num+num_lines_per_read-1)/num_lines_per_read;
+			result = std::time(nullptr);
+			std::cout << "Analyzing read/contig/scaffold number " << read_number << " at " << std::asctime(std::localtime(&result)) << '\n';
 			if (read_number%10000==0)
 			{
 				//std::cout << read_number << '\n';
