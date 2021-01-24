@@ -10,6 +10,7 @@
 #include <math.h>
 #include <numeric>
 #include <stdlib.h>
+#include <unistd.h>
 #include <vector>
 
 //smooth kmcdb reads.fastq errremoved.fasta erredits.fasta errpaths.fasta hetremoved.fasta hetedits.fasta hetpath1.fasta hetpath2.fasta hetpath3.fasta hetpath4.fasta hetpath5.fasta hetpath6.fasta error_threshold het_threshold unique_threshold anchor_threshold allowed_err_fraction allowed_rep_fraction max_nodes_to_search distance_multiplier strict > counts.txt
@@ -53,7 +54,7 @@ std::vector<std::string> get_adjacent(CKMCFile& file, std::string& kmer, int& er
 		file.GetCountersForRead(adjacent_kmer, v);
 		int current_type = get_type(v[0], error_threshold, het_threshold, unique_threshold);
 		//if the adjacent kmer is not an error
-		if (current_type > 0)
+		if ((current_type > 0) && (current_type < 3)) //Added the 2nd condition 
 		{
 		  adjacent_kmers.push_back(adjacent_kmer);
 		}
@@ -811,56 +812,161 @@ std::string getFileExt (const std::string &s)
 
 int main(int argc, char* argv[])
 {
+	//parse arguments
+	int c;
+	std::ifstream input_file;
+	int num_lines_per_read;
+	std::string kmcdb;
+	std::string outdir;
+	std::ofstream err_output_file;
+	std::ofstream erredits_output_file;
+	std::ofstream errpaths_output_file;
+	std::ofstream het_output_file;
+	std::ofstream hetedits_output_file;
+	std::ofstream hetpaths1_output_file;
+	std::ofstream hetpaths2_output_file;
+	std::ofstream hetpaths3_output_file;
+	std::ofstream hetpaths4_output_file;
+	std::ofstream hetpaths5_output_file;
+	std::ofstream hetpaths6_output_file;
+	int k = 0;
+	double l = 0;
+	int error_threshold = 0;
+	int het_threshold = 0;
+	int unique_threshold = 0;
+	int anchor_threshold = 0;
+	double allowed_err_fraction = 1;
+	double allowed_rep_fraction = 1;
+	int max_nodes_to_search = 1000;
+	double distance_multiplier = 1.2;
+	int strict = 1;
+	int polish = 0;
+	int num_threads = 1;
+	
+	while ((c = getopt(argc, argv, "hi:j:o:k:l:m:d:e:r:s:pt:")) != -1)
+	{
+		switch (c)
+		{
+			case 'h':
+				fprintf(stderr, "Usage: %s -i input.fa/fq -j kmcdb -o outdir -k kmersize -l lambda [-m max_nodes_to_search (default 1000)] [-d distance_multiplier (default 1.2)] [-e allowed_err_fraction (default 1.0)] [-r allowed_rep_fraction (default 1.0)] [-s strict (0 or 1, default 1)] [-p (run in polish mode, i.e. run only error correction and not het smoothing)] [-t num_threads (default 1)]\n", argv[0]);
+				exit(EXIT_FAILURE);
+			case 'i':
+				//is the input fasta or fastq?
+				//note: the output will be fasta format, since quality values
+				//will not match once the read is edited and smoothed
+				if ((getFileExt(optarg) == "fasta") || (getFileExt(optarg) == "fa"))
+				{
+					num_lines_per_read = 2;
+				}
+				else if ((getFileExt(optarg) == "fastq") || (getFileExt(optarg) == "fq"))
+				{
+					num_lines_per_read = 4;
+				}
+				else
+				{
+					fprintf(stderr, "Input filename must end in .fa .fasta .fq or .fastq.\n");
+					exit(EXIT_FAILURE);
+				}
+				input_file.open(optarg);
+				if (!input_file.is_open())
+				{
+					fprintf(stderr, "Please ensure %s exists.\n", optarg);
+					exit(EXIT_FAILURE);
+				}
+				break;
+			case 'j':
+				kmcdb = optarg;
+				break;
+			case 'o':
+				outdir = optarg;
+				err_output_file.open(outdir+"/errremoved.fasta");
+				erredits_output_file.open(outdir+"/erredits.fasta");
+				errpaths_output_file.open(outdir+"/errpaths.fasta");
+				het_output_file.open(outdir+"/hetremoved.fasta");
+				hetedits_output_file.open(outdir+"/hetedits.fasta");
+				hetpaths1_output_file.open(outdir+"/hetpath1.fasta");
+				hetpaths2_output_file.open(outdir+"/hetpath2.fasta");
+				hetpaths3_output_file.open(outdir+"/hetpath3.fasta");
+				hetpaths4_output_file.open(outdir+"/hetpath4.fasta");
+				hetpaths5_output_file.open(outdir+"/hetpath5.fasta");
+				hetpaths6_output_file.open(outdir+"/hetpath6.fasta");
+				break;
+			case 'k':
+				k = atoi(optarg);
+				break;
+			case 'l':
+				l = std::stod(optarg);
+				error_threshold = round(ceil(0.5 * l));
+				het_threshold = round(ceil(1.5 * l));
+				unique_threshold = round(ceil(3.5 * l));
+				anchor_threshold = round(ceil(2.5 * l));
+				break;
+			case 'm':
+				max_nodes_to_search = atoi(optarg);
+				break;
+			case 'd':
+				distance_multiplier = std::stod(optarg);
+				break;
+			case 'e':
+				allowed_err_fraction = std::stod(optarg);
+				break;
+			case 'r':
+				allowed_rep_fraction = std::stod(optarg);
+				break;
+			case 's':
+				strict = atoi(optarg);
+				break;
+			case 'p':
+				polish = 1;
+				break;
+			case 't':
+				num_threads = atoi(optarg);
+				break;
+			case '?':
+				fprintf(stderr, "Option -%c is invalid or requires an argument.\n", optopt);
+			default:
+				fprintf(stderr, "Usage: %s -i input.fa/fq -j kmcdb -o outdir -k kmersize -l lambda [-m max_nodes_to_search (default 1000)] [-d distance_multiplier (default 1.2)] [-e allowed_err_fraction (default 1.0)] [-r allowed_rep_fraction (default 1.0)] [-s strict (0 or 1, default 1)] [-p (run in polish mode, i.e. run only error correction and not het smoothing)] [-t num_threads (default 1)]\n", argv[0]);
+				exit(EXIT_FAILURE);
+		}
+	}
+	//check that required arguments are given
+	if (!input_file.is_open())
+	{
+		fprintf(stderr, "Please provide input file with -i argument.\n");
+		exit(EXIT_FAILURE);
+	}
+	if (kmcdb.empty())
+	{
+		fprintf(stderr, "Please provide kmcdb with -j argument.\n");
+		exit(EXIT_FAILURE);
+	}
+	if (outdir.empty())
+	{
+		fprintf(stderr, "Please provide output directory with -o argument.\n");
+		exit(EXIT_FAILURE);
+	}
+	if (k==0)
+	{
+		fprintf(stderr, "Please provide kmer size with -k argument.\n");
+		exit(EXIT_FAILURE);
+	}
+	if (l==0)
+	{
+		fprintf(stderr, "Please provide average kmer coverage with -l argument.\n");
+		exit(EXIT_FAILURE);
+	}
+	
 	//load KMC database
 	CKMCFile file;
 	std::time_t result = std::time(nullptr);
 	std::cout << "Loading KMC database at " << std::asctime(std::localtime(&result)) << '\n';
-	file.OpenForRA(argv[1]);
+	file.OpenForRA(kmcdb);
 	result = std::time(nullptr);
 	std::cout << "KMC database loaded at " << std::asctime(std::localtime(&result)) << '\n';
 	
-	//initialize file streams
-	std::string line;
-	std::ifstream input_file(argv[2]);
-	std::string outdir = argv[3];
-	std::ofstream err_output_file(outdir+"errremoved.fasta");
-	std::ofstream erredits_output_file(outdir+"erredits.fasta");
-	std::ofstream errpaths_output_file(outdir+"errpaths.fasta");
-	std::ofstream het_output_file(outdir+"hetremoved.fasta");
-	std::ofstream hetedits_output_file(outdir+"hetedits.fasta");
-	std::ofstream hetpaths1_output_file(outdir+"hetpath1.fasta");
-	std::ofstream hetpaths2_output_file(outdir+"hetpath2.fasta");
-	std::ofstream hetpaths3_output_file(outdir+"hetpath3.fasta");
-	std::ofstream hetpaths4_output_file(outdir+"hetpath4.fasta");
-	std::ofstream hetpaths5_output_file(outdir+"hetpath5.fasta");
-	std::ofstream hetpaths6_output_file(outdir+"hetpath6.fasta");
-	int error_threshold = atoi(argv[4]);
-	int het_threshold = atoi(argv[5]);
-	int unique_threshold = atoi(argv[6]);
-	int anchor_threshold = atoi(argv[7]);
-	double allowed_err_fraction = std::stod(argv[8]);
-	double allowed_rep_fraction = std::stod(argv[9]);
-	int max_nodes_to_search = atoi(argv[10]);
-	double distance_multiplier = std::stod(argv[11]);
-	int strict = atoi(argv[12]);
-	int k = atoi(argv[13]);
-
 	//load reads
 	int line_num = -1;
-	
-	//is the input fasta or fastq?
-	//note: the output will be fasta format, since quality values
-	//will not match once the read is edited and smoothed
-	int num_lines_per_read;
-	if ((getFileExt(argv[2]) == "fasta") || (getFileExt(argv[2]) == "fa"))
-	{
-		num_lines_per_read = 2;
-	}
-	if ((getFileExt(argv[2]) == "fastq") || (getFileExt(argv[2]) == "fq"))
-	{
-		num_lines_per_read = 4;
-	}
-	
+	std::string line;
 	std::string header;
 	while (getline(input_file, line))
 	{
@@ -916,7 +1022,10 @@ int main(int argc, char* argv[])
 			err_output_file << header << '\n';
 			err_output_file << edited_read;
 			edited_read.pop_back();
-			continue;
+			if (polish == 1)
+			{
+				continue;
+			}
 
 			//get counters of kmers in edited read
 			file.GetCountersForRead(edited_read, v);
