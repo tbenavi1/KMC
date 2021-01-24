@@ -843,12 +843,12 @@ int main(int argc, char* argv[])
 	int polish = 0;
 	int num_threads = 1;
 	
-	while ((c = getopt(argc, argv, "hi:j:o:k:l:m:d:e:r:s:pt:")) != -1)
+	while ((c = getopt(argc, argv, "hi:j:o:k:l:g:m:a:u:n:d:e:r:s:pt:")) != -1)
 	{
 		switch (c)
 		{
 			case 'h':
-				fprintf(stderr, "Usage: %s -i input.fa/fq -j kmcdb -o outdir -k kmersize -l lambda [-m max_nodes_to_search (default 1000)] [-d distance_multiplier (default 1.2)] [-e allowed_err_fraction (default 1.0)] [-r allowed_rep_fraction (default 1.0)] [-s strict (0 or 1, default 1)] [-p (run in polish mode, i.e. run only error correction and not het smoothing)] [-t num_threads (default 1)]\n", argv[0]);
+				fprintf(stderr, "Usage: %s -i input.fa/fq -j kmcdb -o outdir -k kmersize -l lambda [-n max_nodes_to_search (default 1000)] [-d distance_multiplier (default 1.2)] [-e allowed_err_fraction (default 1.0)] [-r allowed_rep_fraction (default 1.0)] [-s strict (0 or 1, default 1)] [-p (run in polish mode, i.e. run only error correction and not het smoothing)] [-t num_threads (default 1)]\n", argv[0]);
 				exit(EXIT_FAILURE);
 			case 'i':
 				//is the input fasta or fastq?
@@ -895,13 +895,38 @@ int main(int argc, char* argv[])
 				k = atoi(optarg);
 				break;
 			case 'l':
+				//only set values based on lambda if not already set by hidden parameters g, m, a, or u
 				l = std::stod(optarg);
-				error_threshold = round(ceil(0.5 * l));
-				het_threshold = round(ceil(1.5 * l));
-				unique_threshold = round(ceil(3.5 * l));
-				anchor_threshold = round(ceil(2.5 * l));
+				if (error_threshold == 0)
+				{
+					error_threshold = round(ceil(0.5 * l));
+				}
+				if (het_threshold == 0)
+				{
+					het_threshold = round(ceil(1.5 * l));
+				}
+				if (unique_threshold == 0)
+				{
+					unique_threshold = round(ceil(3.5 * l));
+				}
+				if (anchor_threshold == 0)
+				{
+					anchor_threshold = round(ceil(2.5 * l));
+				}
+				break;
+			case 'g':
+				error_threshold = atoi(optarg);
 				break;
 			case 'm':
+				het_threshold = atoi(optarg);
+				break;
+			case 'a':
+				anchor_threshold = atoi(optarg);
+				break;
+			case 'u':
+				unique_threshold = atoi(optarg);
+				break;
+			case 'n':
 				max_nodes_to_search = atoi(optarg);
 				break;
 			case 'd':
@@ -925,7 +950,7 @@ int main(int argc, char* argv[])
 			case '?':
 				fprintf(stderr, "Option -%c is invalid or requires an argument.\n", optopt);
 			default:
-				fprintf(stderr, "Usage: %s -i input.fa/fq -j kmcdb -o outdir -k kmersize -l lambda [-m max_nodes_to_search (default 1000)] [-d distance_multiplier (default 1.2)] [-e allowed_err_fraction (default 1.0)] [-r allowed_rep_fraction (default 1.0)] [-s strict (0 or 1, default 1)] [-p (run in polish mode, i.e. run only error correction and not het smoothing)] [-t num_threads (default 1)]\n", argv[0]);
+				fprintf(stderr, "Usage: %s -i input.fa/fq -j kmcdb -o outdir -k kmersize -l lambda [-n max_nodes_to_search (default 1000)] [-d distance_multiplier (default 1.2)] [-e allowed_err_fraction (default 1.0)] [-r allowed_rep_fraction (default 1.0)] [-s strict (0 or 1, default 1)] [-p (run in polish mode, i.e. run only error correction and not het smoothing)] [-t num_threads (default 1)]\n", argv[0]);
 				exit(EXIT_FAILURE);
 		}
 	}
@@ -950,9 +975,9 @@ int main(int argc, char* argv[])
 		fprintf(stderr, "Please provide kmer size with -k argument.\n");
 		exit(EXIT_FAILURE);
 	}
-	if (l==0)
+	if ((error_threshold == 0) || (het_threshold == 0) || (anchor_threshold == 0) || (unique_threshold == 0))
 	{
-		fprintf(stderr, "Please provide average kmer coverage with -l argument.\n");
+		fprintf(stderr, "Please provide average kmer coverage with -l argument. (Or specify the thresholds manually).\n");
 		exit(EXIT_FAILURE);
 	}
 	
