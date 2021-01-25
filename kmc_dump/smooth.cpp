@@ -8,8 +8,10 @@
 #include <iostream>
 #include <list>
 #include <math.h>
+#include <mutex>
 #include <numeric>
 #include <stdlib.h>
+#include <thread>
 #include <unistd.h>
 #include <vector>
 
@@ -345,7 +347,7 @@ std::vector<std::string> get_paths(CKMCFile& file, int& error_threshold, int& he
 	return paths;
 }
 
-void write_error_paths(bool& queue_broken, std::vector<std::string>& edited_error_portions, std::ofstream& erredits_output_file, std::ofstream& errpaths_output_file, std::string& edited_read, int& read_number, int& first_error_idx, int& last_error_idx, std::string& before_first_error_kmer, std::string& original_error_portion, std::string& after_last_error_kmer, CKMCFile& file)
+void write_error_paths(bool& queue_broken, std::vector<std::string>& edited_error_portions, std::ofstream& erredits_output_file, std::ofstream& errpaths_output_file, std::string& edited_read, int& read_number, int& first_error_idx, int& last_error_idx, std::string& before_first_error_kmer, std::string& original_error_portion, std::string& after_last_error_kmer, CKMCFile& file, std::mutex& outputfileMutex)
 {
 	std::ofstream* errwrite_output_file;
 	//we finished the search and presumably we have found one homozygous path or two heterozygous paths
@@ -375,6 +377,7 @@ void write_error_paths(bool& queue_broken, std::vector<std::string>& edited_erro
 			edited_read += original_error_portion;
 		}
 	}
+	outputfileMutex.lock();
 	std::string original_error_block = before_first_error_kmer + original_error_portion + after_last_error_kmer;
 	*errwrite_output_file << ">read" << read_number << "_firsterrorkmer" << first_error_idx << "_lasterrorkmer" << last_error_idx << "_original" << '\n';
 	*errwrite_output_file << before_first_error_kmer << " " << original_error_portion << " " << after_last_error_kmer << '\n';
@@ -398,9 +401,10 @@ void write_error_paths(bool& queue_broken, std::vector<std::string>& edited_erro
 		}
 		*errwrite_output_file << '\n';
 	}
+	outputfileMutex.unlock();
 }
 
-void write_nonhom_paths(bool& queue_broken, std::vector<std::string>& smoothed_nonhom_portions, std::ofstream& hetedits_output_file, std::ofstream& hetpaths1_output_file, std::ofstream& hetpaths2_output_file, std::ofstream& hetpaths3_output_file, std::ofstream& hetpaths4_output_file, std::ofstream& hetpaths5_output_file, std::ofstream& hetpaths6_output_file, std::string& smoothed_read, int& read_number, int& first_nonhom_idx, int& last_nonhom_idx, std::string& before_first_nonhom_kmer, std::string& original_nonhom_portion, std::string& after_last_nonhom_kmer, CKMCFile& file, int& strict)
+void write_nonhom_paths(bool& queue_broken, std::vector<std::string>& smoothed_nonhom_portions, std::ofstream& hetedits_output_file, std::ofstream& hetpaths1_output_file, std::ofstream& hetpaths2_output_file, std::ofstream& hetpaths3_output_file, std::ofstream& hetpaths4_output_file, std::ofstream& hetpaths5_output_file, std::ofstream& hetpaths6_output_file, std::string& smoothed_read, int& read_number, int& first_nonhom_idx, int& last_nonhom_idx, std::string& before_first_nonhom_kmer, std::string& original_nonhom_portion, std::string& after_last_nonhom_kmer, CKMCFile& file, int& strict, std::mutex& outputfileMutex)
 {	
 	std::string left_part;
 	if (!before_first_nonhom_kmer.empty())
@@ -480,6 +484,7 @@ void write_nonhom_paths(bool& queue_broken, std::vector<std::string>& smoothed_n
 	{
 		hetwrite_output_file = &hetpaths6_output_file;
 	}
+	outputfileMutex.lock();
 	std::string original_nonhom_block = before_first_nonhom_kmer + original_nonhom_portion + after_last_nonhom_kmer;
 	*hetwrite_output_file << ">read" << read_number << "_firstnonhomkmer" << first_nonhom_idx << "_lastnonhomkmer" << last_nonhom_idx << "_original" << '\n';
 	*hetwrite_output_file << before_first_nonhom_kmer << " " << original_nonhom_portion << " " << after_last_nonhom_kmer << '\n';
@@ -503,9 +508,10 @@ void write_nonhom_paths(bool& queue_broken, std::vector<std::string>& smoothed_n
 		}
 		*hetwrite_output_file << '\n';
 	}
+	outputfileMutex.unlock();
 }
 
-std::string remove_err (std::vector<uint32_t>& v, std::string& read, int& read_number, CKMCFile& file, std::ofstream& erredits_output_file, std::ofstream& errpaths_output_file, int& error_threshold, int& het_threshold, int& unique_threshold, int& max_nodes_to_search, double& distance_multiplier, int& k)
+std::string remove_err (std::vector<uint32_t>& v, std::string& read, int& read_number, CKMCFile& file, std::ofstream& erredits_output_file, std::ofstream& errpaths_output_file, int& error_threshold, int& het_threshold, int& unique_threshold, int& max_nodes_to_search, double& distance_multiplier, int& k, std::mutex& outputfileMutex)
 {
 	//initialize variables
 	std::string edited_read;
@@ -570,7 +576,7 @@ std::string remove_err (std::vector<uint32_t>& v, std::string& read, int& read_n
 				last_error_idx = i-1;
 				first_nonerror_idx = i;
 				std::string original_error_portion = read.substr(0, i);
-				write_error_paths(queue_broken, edited_error_portions, erredits_output_file, errpaths_output_file, edited_read, read_number, first_error_idx, last_error_idx, before_first_error_kmer, original_error_portion, after_last_error_kmer, file);
+				write_error_paths(queue_broken, edited_error_portions, erredits_output_file, errpaths_output_file, edited_read, read_number, first_error_idx, last_error_idx, before_first_error_kmer, original_error_portion, after_last_error_kmer, file, outputfileMutex);
 			}
 			//if previous kmer was error, we have left the error block
 			if (previous_type == 0 && !before_first_error_kmer.empty())
@@ -592,7 +598,7 @@ std::string remove_err (std::vector<uint32_t>& v, std::string& read, int& read_n
 				last_error_idx = i-1;
 				first_nonerror_idx = i;
 				std::string original_error_portion = read.substr(first_error_idx+k-1, last_error_idx - first_error_idx + 2 - k);
-				write_error_paths(queue_broken, edited_error_portions, erredits_output_file, errpaths_output_file, edited_read, read_number, first_error_idx, last_error_idx, before_first_error_kmer, original_error_portion, after_last_error_kmer, file);
+				write_error_paths(queue_broken, edited_error_portions, erredits_output_file, errpaths_output_file, edited_read, read_number, first_error_idx, last_error_idx, before_first_error_kmer, original_error_portion, after_last_error_kmer, file, outputfileMutex);
 			}
 			//if previous kmer is nonerror, we are continuing a non error block
 			if (previous_type > 0)
@@ -614,7 +620,7 @@ std::string remove_err (std::vector<uint32_t>& v, std::string& read, int& read_n
 		last_error_idx = v.size()-1;
 		first_nonerror_idx = v.size();
 		std::string original_error_portion = read.substr(first_error_idx+k-1);
-		write_error_paths(queue_broken, edited_error_portions, erredits_output_file, errpaths_output_file, edited_read, read_number, first_error_idx, last_error_idx, before_first_error_kmer, original_error_portion, after_last_error_kmer, file);
+		write_error_paths(queue_broken, edited_error_portions, erredits_output_file, errpaths_output_file, edited_read, read_number, first_error_idx, last_error_idx, before_first_error_kmer, original_error_portion, after_last_error_kmer, file, outputfileMutex);
 	}
 	if (previous_type > 0)
 	{
@@ -628,7 +634,7 @@ std::string remove_err (std::vector<uint32_t>& v, std::string& read, int& read_n
 	return edited_read;
 }
 
-std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_number, CKMCFile& file, std::ofstream& hetedits_output_file, std::ofstream& hetpaths1_output_file, std::ofstream& hetpaths2_output_file, std::ofstream& hetpaths3_output_file, std::ofstream& hetpaths4_output_file, std::ofstream& hetpaths5_output_file, std::ofstream& hetpaths6_output_file, int& error_threshold, int& het_threshold, int& unique_threshold, int& anchor_threshold, int& max_nodes_to_search, double& distance_multiplier, int& strict, int& k)
+std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_number, CKMCFile& file, std::ofstream& hetedits_output_file, std::ofstream& hetpaths1_output_file, std::ofstream& hetpaths2_output_file, std::ofstream& hetpaths3_output_file, std::ofstream& hetpaths4_output_file, std::ofstream& hetpaths5_output_file, std::ofstream& hetpaths6_output_file, int& error_threshold, int& het_threshold, int& unique_threshold, int& anchor_threshold, int& max_nodes_to_search, double& distance_multiplier, int& strict, int& k, std::mutex& outputfileMutex)
 {
 	//initialize variables
 	std::string smoothed_read;
@@ -713,7 +719,7 @@ std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_n
 				last_nonhom_idx = i-1;
 				first_hom_idx = i;
 				std::string original_nonhom_portion = read.substr(0, i);
-				write_nonhom_paths(queue_broken, smoothed_nonhom_portions, hetedits_output_file, hetpaths1_output_file, hetpaths2_output_file, hetpaths3_output_file, hetpaths4_output_file, hetpaths5_output_file, hetpaths6_output_file, smoothed_read, read_number, first_nonhom_idx, last_nonhom_idx, before_first_nonhom_kmer, original_nonhom_portion, after_last_nonhom_kmer, file, strict);
+				write_nonhom_paths(queue_broken, smoothed_nonhom_portions, hetedits_output_file, hetpaths1_output_file, hetpaths2_output_file, hetpaths3_output_file, hetpaths4_output_file, hetpaths5_output_file, hetpaths6_output_file, smoothed_read, read_number, first_nonhom_idx, last_nonhom_idx, before_first_nonhom_kmer, original_nonhom_portion, after_last_nonhom_kmer, file, strict, outputfileMutex);
 			}
 			//if previous kmer was nonhom, we have left the nonhom block
 			if (((previous_type == 0) || (previous_type == 1) || (previous_type == 3)) && !before_first_nonhom_kmer.empty())
@@ -747,7 +753,7 @@ std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_n
 				last_nonhom_idx = i-1;
 				first_hom_idx = i;
 				std::string original_nonhom_portion = read.substr(first_nonhom_idx+k-1, last_nonhom_idx - first_nonhom_idx + 2 - k);
-				write_nonhom_paths(queue_broken, smoothed_nonhom_portions, hetedits_output_file, hetpaths1_output_file, hetpaths2_output_file, hetpaths3_output_file, hetpaths4_output_file, hetpaths5_output_file, hetpaths6_output_file, smoothed_read, read_number, first_nonhom_idx, last_nonhom_idx, before_first_nonhom_kmer, original_nonhom_portion, after_last_nonhom_kmer, file, strict);
+				write_nonhom_paths(queue_broken, smoothed_nonhom_portions, hetedits_output_file, hetpaths1_output_file, hetpaths2_output_file, hetpaths3_output_file, hetpaths4_output_file, hetpaths5_output_file, hetpaths6_output_file, smoothed_read, read_number, first_nonhom_idx, last_nonhom_idx, before_first_nonhom_kmer, original_nonhom_portion, after_last_nonhom_kmer, file, strict, outputfileMutex);
 				}
 			}
 			//if previous kmer is hom, we are continuing a hom block
@@ -780,7 +786,7 @@ std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_n
 			last_nonhom_idx = v.size()-1;
 			first_hom_idx = v.size();
 			std::string original_nonhom_portion = read.substr(first_nonhom_idx+k-1);
-			write_nonhom_paths(queue_broken, smoothed_nonhom_portions, hetedits_output_file, hetpaths1_output_file, hetpaths2_output_file, hetpaths3_output_file, hetpaths4_output_file, hetpaths5_output_file, hetpaths6_output_file, smoothed_read, read_number, first_nonhom_idx, last_nonhom_idx, before_first_nonhom_kmer, original_nonhom_portion, after_last_nonhom_kmer, file, strict);
+			write_nonhom_paths(queue_broken, smoothed_nonhom_portions, hetedits_output_file, hetpaths1_output_file, hetpaths2_output_file, hetpaths3_output_file, hetpaths4_output_file, hetpaths5_output_file, hetpaths6_output_file, smoothed_read, read_number, first_nonhom_idx, last_nonhom_idx, before_first_nonhom_kmer, original_nonhom_portion, after_last_nonhom_kmer, file, strict, outputfileMutex);
 		}
 		else
 		{
@@ -808,6 +814,120 @@ std::string getFileExt (const std::string &s)
 		return(s.substr(i+1, s.length() - i));
 	}
 	return("");
+}
+
+void processRead(std::ifstream& input_file, int& line_num, int& num_lines_per_read, CKMCFile& file, int& error_threshold, double& allowed_err_fraction, std::ofstream& erredits_output_file, std::ofstream& errpaths_output_file, int& het_threshold, int& unique_threshold, int& max_nodes_to_search, double& distance_multiplier, int& k, std::ofstream& err_output_file, int& polish, double& allowed_rep_fraction, std::ofstream& het_output_file, std::ofstream& hetedits_output_file, std::ofstream& hetpaths1_output_file, std::ofstream& hetpaths2_output_file, std::ofstream& hetpaths3_output_file, std::ofstream& hetpaths4_output_file, std::ofstream& hetpaths5_output_file, std::ofstream& hetpaths6_output_file, int& anchor_threshold, int& strict, std::mutex& inputfileMutex, std::mutex& outputfileMutex, std::mutex& coutMutex)
+{
+	std::string line;
+	int thread_line_num;
+	std::string header;
+	inputfileMutex.lock();
+	while (getline(input_file, line))
+	{
+		line_num++;
+		thread_line_num = line_num;
+		//if on line with the header
+		if (thread_line_num % num_lines_per_read == 0)
+		{
+			//save header, but make sure it is a fasta header, not a fastq header
+			header = ">" + line.substr(1);
+		}
+		//if on line with the read
+		if (thread_line_num % num_lines_per_read == 1)
+		{
+			inputfileMutex.unlock();
+			std::string read = line;
+			int read_number = (thread_line_num+num_lines_per_read-1)/num_lines_per_read;
+			std::time_t thread_result = std::time(nullptr);
+			coutMutex.lock();
+			std::cout << "Analyzing read/contig/scaffold number " << read_number << " at " << std::asctime(std::localtime(&thread_result)) << '\n';
+			coutMutex.unlock();
+			if (read_number%10000==0)
+			{
+				//std::cout << read_number << '\n';
+			}
+			
+			//get counters of kmers in read
+			std::vector<uint32_t> v;
+			file.GetCountersForRead(read, v);
+			int num_kmers = v.size();
+			
+			//check if too many error kmers
+			//if greater than allowed_err_fraction of kmers in the read are errors
+			//discard the read to not waste time
+			int num_err = 0;
+			for (int i = 0; i < v.size(); i++)
+			{
+				//std::cout << v[i] << ' ';
+				if (v[i] <= error_threshold)
+				{
+					num_err++;
+				}
+			}
+			//std::cout << '\n';
+			//continue;
+			double err_fraction = static_cast<double>(num_err)/num_kmers;
+			if (err_fraction >= allowed_err_fraction)
+			{
+				//std::cout << "read number " << read_number << " has " << err_fraction << " percent error kmers, discarding." << '\n';
+				continue;
+			}
+
+			//remove errors from the read to get edited read
+			std::string edited_read = remove_err(v, read, read_number, file, erredits_output_file, errpaths_output_file, error_threshold, het_threshold, unique_threshold, max_nodes_to_search, distance_multiplier, k, outputfileMutex);
+
+			//write header and edited read to err_output_file
+			outputfileMutex.lock();
+			err_output_file << header << '\n';
+			err_output_file << edited_read;
+			outputfileMutex.unlock();
+			edited_read.pop_back();
+			if (polish == 1)
+			{
+				continue;
+			}
+
+			//get counters of kmers in edited read
+			file.GetCountersForRead(edited_read, v);
+			num_kmers = v.size();
+
+			//check if too many repetitive kmers
+			//if greater than allowed_rep_fraction of kmers in the edited read are repetitive
+			//discard the read to not waste time
+			int num_rep = 0;
+			for (int i = 0; i < v.size(); i++)
+			{
+				//std::cout << v[i] << ' ';
+				if (v[i] > unique_threshold)
+				{
+					num_rep++;
+				}
+			}
+			//std::cout << '\n';
+			//continue;
+			double rep_fraction = static_cast<double>(num_rep)/num_kmers;
+			if (rep_fraction >= allowed_rep_fraction)
+			{
+				//std::cout << "read number " << read_number << " has " << rep_fraction << " percent repetitive kmers, discarding." << '\n';
+				outputfileMutex.lock();
+				het_output_file << header << '\n';
+				het_output_file << edited_read << '\n';
+				outputfileMutex.unlock();
+				continue;
+			}
+
+			//smoothe het from the edited read to get smoothed read
+			std::string smoothed_read = smooth_het(v, edited_read, read_number, file, hetedits_output_file, hetpaths1_output_file, hetpaths2_output_file, hetpaths3_output_file, hetpaths4_output_file, hetpaths5_output_file, hetpaths6_output_file, error_threshold, het_threshold, unique_threshold, anchor_threshold, max_nodes_to_search, distance_multiplier, strict, k, outputfileMutex);
+
+			//write header and smoothed read to het_output_file
+			outputfileMutex.lock();
+			het_output_file << header << '\n';
+			het_output_file << smoothed_read;
+			outputfileMutex.unlock();
+			inputfileMutex.lock();
+		}
+	}
+	inputfileMutex.unlock();
 }
 
 int main(int argc, char* argv[])
@@ -989,104 +1109,26 @@ int main(int argc, char* argv[])
 	result = std::time(nullptr);
 	std::cout << "KMC database loaded at " << std::asctime(std::localtime(&result)) << '\n';
 	
-	//load reads
+	//global variables
 	int line_num = -1;
-	std::string line;
-	std::string header;
-	while (getline(input_file, line))
+	
+	//make locks for the threads
+	std::mutex inputfileMutex;
+	std::mutex outputfileMutex;
+	std::mutex coutMutex;
+	
+	//process reads using threads
+	std::vector<std::thread> threads;
+	for (int i = 0; i < num_threads; i++)
 	{
-		line_num++;
-		//if on line with the header
-		if (line_num % num_lines_per_read == 0)
-		{
-			//save header, but make sure it is a fasta header, not a fastq header
-			header = ">" + line.substr(1);
-		}
-		//if on line with the read
-		if (line_num % num_lines_per_read == 1)
-		{
-			std::string read = line;
-			int read_number = (line_num+num_lines_per_read-1)/num_lines_per_read;
-			result = std::time(nullptr);
-			std::cout << "Analyzing read/contig/scaffold number " << read_number << " at " << std::asctime(std::localtime(&result)) << '\n';
-			if (read_number%10000==0)
-			{
-				//std::cout << read_number << '\n';
-			}
-			
-			//get counters of kmers in read
-			std::vector<uint32_t> v;
-			file.GetCountersForRead(read, v);
-			int num_kmers = v.size();
-			
-			//check if too many error kmers
-			//if greater than allowed_err_fraction of kmers in the read are errors
-			//discard the read to not waste time
-			int num_err = 0;
-			for (int i = 0; i < v.size(); i++)
-			{
-				//std::cout << v[i] << ' ';
-				if (v[i] <= error_threshold)
-				{
-					num_err++;
-				}
-			}
-			//std::cout << '\n';
-			//continue;
-			double err_fraction = static_cast<double>(num_err)/num_kmers;
-			if (err_fraction >= allowed_err_fraction)
-			{
-				//std::cout << "read number " << read_number << " has " << err_fraction << " percent error kmers, discarding." << '\n';
-				continue;
-			}
-
-			//remove errors from the read to get edited read
-			std::string edited_read = remove_err(v, read, read_number, file, erredits_output_file, errpaths_output_file, error_threshold, het_threshold, unique_threshold, max_nodes_to_search, distance_multiplier, k);
-
-			//write header and edited read to err_output_file
-			err_output_file << header << '\n';
-			err_output_file << edited_read;
-			edited_read.pop_back();
-			if (polish == 1)
-			{
-				continue;
-			}
-
-			//get counters of kmers in edited read
-			file.GetCountersForRead(edited_read, v);
-			num_kmers = v.size();
-
-			//check if too many repetitive kmers
-			//if greater than allowed_rep_fraction of kmers in the edited read are repetitive
-			//discard the read to not waste time
-			int num_rep = 0;
-			for (int i = 0; i < v.size(); i++)
-			{
-				//std::cout << v[i] << ' ';
-				if (v[i] > unique_threshold)
-				{
-					num_rep++;
-				}
-			}
-			//std::cout << '\n';
-			//continue;
-			double rep_fraction = static_cast<double>(num_rep)/num_kmers;
-			if (rep_fraction >= allowed_rep_fraction)
-			{
-				//std::cout << "read number " << read_number << " has " << rep_fraction << " percent repetitive kmers, discarding." << '\n';
-				het_output_file << header << '\n';
-				het_output_file << edited_read << '\n';
-				continue;
-			}
-
-			//smoothe het from the edited read to get smoothed read
-			std::string smoothed_read = smooth_het(v, edited_read, read_number, file, hetedits_output_file, hetpaths1_output_file, hetpaths2_output_file, hetpaths3_output_file, hetpaths4_output_file, hetpaths5_output_file, hetpaths6_output_file, error_threshold, het_threshold, unique_threshold, anchor_threshold, max_nodes_to_search, distance_multiplier, strict, k);
-
-			//write header and smoothed read to het_output_file
-			het_output_file << header << '\n';
-			het_output_file << smoothed_read;
-		}
+		threads.push_back(std::thread(processRead, std::ref(input_file), std::ref(line_num), std::ref(num_lines_per_read), std::ref(file), std::ref(error_threshold), std::ref(allowed_err_fraction), std::ref(erredits_output_file), std::ref(errpaths_output_file), std::ref(het_threshold), std::ref(unique_threshold), std::ref(max_nodes_to_search), std::ref(distance_multiplier), std::ref(k), std::ref(err_output_file), std::ref(polish), std::ref(allowed_rep_fraction), std::ref(het_output_file), std::ref(hetedits_output_file), std::ref(hetpaths1_output_file), std::ref(hetpaths2_output_file), std::ref(hetpaths3_output_file), std::ref(hetpaths4_output_file), std::ref(hetpaths5_output_file), std::ref(hetpaths6_output_file), std::ref(anchor_threshold), std::ref(strict), std::ref(inputfileMutex), std::ref(outputfileMutex), std::ref(coutMutex)));
 	}
+	for (auto &th : threads)
+	{
+		th.join();
+	}
+	
+	//close files
 	input_file.close();
 	err_output_file.close();
 	erredits_output_file.close();
