@@ -816,7 +816,7 @@ std::string getFileExt (const std::string &s)
 	return("");
 }
 
-void processRead(std::ifstream& input_file, int& line_num, int& num_lines_per_read, CKMCFile& file, int& error_threshold, double& allowed_err_fraction, std::ofstream& erredits_output_file, std::ofstream& errpaths_output_file, int& het_threshold, int& unique_threshold, int& max_nodes_to_search, double& distance_multiplier, int& k, std::ofstream& err_output_file, int& polish, double& allowed_rep_fraction, std::ofstream& het_output_file, std::ofstream& hetedits_output_file, std::ofstream& hetpaths1_output_file, std::ofstream& hetpaths2_output_file, std::ofstream& hetpaths3_output_file, std::ofstream& hetpaths4_output_file, std::ofstream& hetpaths5_output_file, std::ofstream& hetpaths6_output_file, int& anchor_threshold, int& strict, std::mutex& inputfileMutex, std::mutex& outputfileMutex, std::mutex& coutMutex)
+void processRead(std::ifstream& input_file, int& line_num, int& num_lines_per_read, CKMCFile& file, int& error_threshold, double& allowed_err_fraction, std::ofstream& erredits_output_file, std::ofstream& errpaths_output_file, int& het_threshold, int& unique_threshold, int& max_nodes_to_search, double& distance_multiplier, int& k, std::ofstream& err_output_file, int& polish, double& allowed_rep_fraction, std::ofstream& het_output_file, std::ofstream& hetedits_output_file, std::ofstream& hetpaths1_output_file, std::ofstream& hetpaths2_output_file, std::ofstream& hetpaths3_output_file, std::ofstream& hetpaths4_output_file, std::ofstream& hetpaths5_output_file, std::ofstream& hetpaths6_output_file, int& anchor_threshold, int& strict, std::mutex& inputfileMutex, std::mutex& outputfileMutex, std::mutex& coutMutex, int& verbose)
 {
 	std::string line;
 	int thread_line_num;
@@ -839,9 +839,12 @@ void processRead(std::ifstream& input_file, int& line_num, int& num_lines_per_re
 			std::string read = line;
 			int read_number = (thread_line_num+num_lines_per_read-1)/num_lines_per_read;
 			std::time_t thread_result = std::time(nullptr);
-			coutMutex.lock();
-			std::cout << "Analyzing read/contig/scaffold number " << read_number << " at " << std::asctime(std::localtime(&thread_result)) << '\n';
-			coutMutex.unlock();
+			if (verbose == 1)
+			{
+				coutMutex.lock();
+				std::cout << "Analyzing read/contig/scaffold number " << read_number << " at " << std::asctime(std::localtime(&thread_result)) << '\n';
+				coutMutex.unlock();
+			}
 			if (read_number%10000==0)
 			{
 				//std::cout << read_number << '\n';
@@ -962,13 +965,14 @@ int main(int argc, char* argv[])
 	int strict = 1;
 	int polish = 0;
 	int num_threads = 1;
+	int verbose = 0;
 	
-	while ((c = getopt(argc, argv, "hi:j:o:k:l:g:m:a:u:n:d:e:r:s:pt:")) != -1)
+	while ((c = getopt(argc, argv, "hi:j:o:k:l:g:m:a:u:t:pn:d:e:r:s:v")) != -1)
 	{
 		switch (c)
 		{
 			case 'h':
-				fprintf(stderr, "Usage: %s -i input.fa/fq -j kmcdb -o outdir -k kmersize -l lambda [-n max_nodes_to_search (default 1000)] [-d distance_multiplier (default 1.2)] [-e allowed_err_fraction (default 1.0)] [-r allowed_rep_fraction (default 1.0)] [-s strict (0 or 1, default 1)] [-p (run in polish mode, i.e. run only error correction and not het smoothing)] [-t num_threads (default 1)]\n", argv[0]);
+				fprintf(stderr, "Usage: %s -i input.fa/fq -j kmcdb -o outdir -k kmersize -l lambda [-t num_threads (default 1)] [-p (run in polish mode, i.e. run only error correction and not het smoothing)] [-n max_nodes_to_search (default 1000)] [-d distance_multiplier (default 1.2)] [-e allowed_err_fraction (default 1.0)] [-r allowed_rep_fraction (default 1.0)] [-s strict (0 or 1, default 1)] [-v (run in verbose mode, i.e. print time stamps for analyses)]\n", argv[0]);
 				exit(EXIT_FAILURE);
 			case 'i':
 				//is the input fasta or fastq?
@@ -1046,6 +1050,12 @@ int main(int argc, char* argv[])
 			case 'u':
 				unique_threshold = atoi(optarg);
 				break;
+			case 't':
+				num_threads = atoi(optarg);
+				break;
+			case 'p':
+				polish = 1;
+				break;
 			case 'n':
 				max_nodes_to_search = atoi(optarg);
 				break;
@@ -1061,16 +1071,13 @@ int main(int argc, char* argv[])
 			case 's':
 				strict = atoi(optarg);
 				break;
-			case 'p':
-				polish = 1;
-				break;
-			case 't':
-				num_threads = atoi(optarg);
+			case 'v':
+				verbose = 1;
 				break;
 			case '?':
 				fprintf(stderr, "Option -%c is invalid or requires an argument.\n", optopt);
 			default:
-				fprintf(stderr, "Usage: %s -i input.fa/fq -j kmcdb -o outdir -k kmersize -l lambda [-n max_nodes_to_search (default 1000)] [-d distance_multiplier (default 1.2)] [-e allowed_err_fraction (default 1.0)] [-r allowed_rep_fraction (default 1.0)] [-s strict (0 or 1, default 1)] [-p (run in polish mode, i.e. run only error correction and not het smoothing)] [-t num_threads (default 1)]\n", argv[0]);
+				fprintf(stderr, "Usage: %s -i input.fa/fq -j kmcdb -o outdir -k kmersize -l lambda [-t num_threads (default 1)] [-p (run in polish mode, i.e. run only error correction and not het smoothing)] [-n max_nodes_to_search (default 1000)] [-d distance_multiplier (default 1.2)] [-e allowed_err_fraction (default 1.0)] [-r allowed_rep_fraction (default 1.0)] [-s strict (0 or 1, default 1)] [-v (run in verbose mode, i.e. print time stamps for analyses)]\n", argv[0]);
 				exit(EXIT_FAILURE);
 		}
 	}
@@ -1121,7 +1128,7 @@ int main(int argc, char* argv[])
 	std::vector<std::thread> threads;
 	for (int i = 0; i < num_threads; i++)
 	{
-		threads.push_back(std::thread(processRead, std::ref(input_file), std::ref(line_num), std::ref(num_lines_per_read), std::ref(file), std::ref(error_threshold), std::ref(allowed_err_fraction), std::ref(erredits_output_file), std::ref(errpaths_output_file), std::ref(het_threshold), std::ref(unique_threshold), std::ref(max_nodes_to_search), std::ref(distance_multiplier), std::ref(k), std::ref(err_output_file), std::ref(polish), std::ref(allowed_rep_fraction), std::ref(het_output_file), std::ref(hetedits_output_file), std::ref(hetpaths1_output_file), std::ref(hetpaths2_output_file), std::ref(hetpaths3_output_file), std::ref(hetpaths4_output_file), std::ref(hetpaths5_output_file), std::ref(hetpaths6_output_file), std::ref(anchor_threshold), std::ref(strict), std::ref(inputfileMutex), std::ref(outputfileMutex), std::ref(coutMutex)));
+		threads.push_back(std::thread(processRead, std::ref(input_file), std::ref(line_num), std::ref(num_lines_per_read), std::ref(file), std::ref(error_threshold), std::ref(allowed_err_fraction), std::ref(erredits_output_file), std::ref(errpaths_output_file), std::ref(het_threshold), std::ref(unique_threshold), std::ref(max_nodes_to_search), std::ref(distance_multiplier), std::ref(k), std::ref(err_output_file), std::ref(polish), std::ref(allowed_rep_fraction), std::ref(het_output_file), std::ref(hetedits_output_file), std::ref(hetpaths1_output_file), std::ref(hetpaths2_output_file), std::ref(hetpaths3_output_file), std::ref(hetpaths4_output_file), std::ref(hetpaths5_output_file), std::ref(hetpaths6_output_file), std::ref(anchor_threshold), std::ref(strict), std::ref(inputfileMutex), std::ref(outputfileMutex), std::ref(coutMutex), std::ref(verbose)));
 	}
 	for (auto &th : threads)
 	{
