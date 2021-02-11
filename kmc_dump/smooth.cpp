@@ -139,21 +139,21 @@ int get_type_het(int& previous_type, std::string& previous_kmer, std::string& cu
 		//if current kmer is a right anchor
 		if ((current_count > (previous_count + error_threshold)) && is_right_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold, anchor_threshold))
 		{
-			std::cout << "current is right anchor" << '\n';
+			//std::cout << "current is right anchor" << '\n';
 			anchor_found = "right";
 			return 2;
 		}
 		//if current kmer is a left anchor
-		if (is_left_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold, anchor_threshold))
+		else if (is_left_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold, anchor_threshold))
 		{
-			std::cout << "current is left anchor" << '\n';
+			//std::cout << "current is left anchor" << '\n';
 			anchor_found = "left";
 			return 2;
 		}
 		//To keep it consistent with previous get_type, we need type to be -1 only before we start the read
 		//So, in this case we will do what was done before, using the coverage and coverage thresholds to
 		//determine whether the kmer is homozygous or not
-		if ((het_threshold < current_count) && (current_count <= unique_threshold))
+		else if ((het_threshold < current_count) && (current_count <= unique_threshold))
 		{
 			anchor_found = "none";
 			return 2;
@@ -165,18 +165,18 @@ int get_type_het(int& previous_type, std::string& previous_kmer, std::string& cu
 		}
 	}
 	//If previously in a nonhomozygous region
-	if (previous_type == 1)
+	else if (previous_type == 1)
 	{
 		//If current kmer is a right anchor
 		if ((current_count > (previous_count + error_threshold)) && is_right_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold, anchor_threshold))
 		{
 			//we have left the nonhom region
-			std::cout << "current is right anchor" << '\n';
+			//std::cout << "current is right anchor" << '\n';
 			anchor_found = "right";
 			return 2;
 		}
 		//If current kmer is a left anchor
-		if (is_left_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold, anchor_threshold))
+		else if (is_left_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold, anchor_threshold))
 		{
 			//this is a weird case where we find two left anchors in a row before a right anchor
 			std::cout << "we found two left anchors in a row" << '\n';
@@ -192,7 +192,8 @@ int get_type_het(int& previous_type, std::string& previous_kmer, std::string& cu
 		}
 	}
 	//If previously in a homozygous region
-	if (previous_type == 2)
+	//else if (previous_type == 2)
+	else
 	{
 		//If current kmer is a right anchor
 		//if ((current_count > (previous_count + error_threshold)) && is_right_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold, anchor_threshold))
@@ -205,15 +206,15 @@ int get_type_het(int& previous_type, std::string& previous_kmer, std::string& cu
 		//If current kmer is a left anchor
 		if (is_left_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold, anchor_threshold))
 		{
-			std::cout << "current is left anchor" << '\n';
+			//std::cout << "current is left anchor" << '\n';
 			anchor_found = "left";
 			return 2;
 		}
 		//If previous kmer is a left anchor
-		if ((current_count < (previous_count - error_threshold)) && is_left_anchor(previous_kmer, previous_count, k, file, error_threshold, het_threshold, unique_threshold, anchor_threshold))
+		else if ((current_count < (previous_count - error_threshold)) && is_left_anchor(previous_kmer, previous_count, k, file, error_threshold, het_threshold, unique_threshold, anchor_threshold))
 		{
 			//we have left the hom region
-			std::cout << "previous was left anchor" << '\n';
+			//std::cout << "previous was left anchor" << '\n';
 			anchor_found = "left";
 			return 1;
 		}
@@ -450,25 +451,64 @@ void write_error_paths(bool& queue_broken, std::vector<std::string>& edited_erro
 	{
 		right_part = after_last_error_kmer;
 	}
+	std::size_t found = original_error_portion.find("-");
+	std::string original;
+	if (found!=std::string::npos)
+	{
+		original = left_part + right_part.substr(original_error_portion.size());
+	}
+	else
+	{
+		original = left_part + original_error_portion + right_part;
+	}
 	auto is_less_than = [&](std::string edited_error_portion1, std::string edited_error_portion2)
 	{
-		int n = original_error_portion.length();
-		int m = edited_error_portion1.length();
+		int n = original.length();
+		std::size_t found1 = edited_error_portion1.find("-");
+		std::string portion1;
+		if (found1!=std::string::npos)
+		{
+			portion1 = left_part + right_part.substr(edited_error_portion1.size());
+		}
+		else
+		{
+			portion1 = left_part + edited_error_portion1 + right_part;
+		}
+		int m = portion1.length();
 		std::vector<std::vector<int>> dp(n+1, std::vector<int>(m+1, -1));
-		int dist1 = minDis(original_error_portion, edited_error_portion1, n, m, dp);
-		m = edited_error_portion2.length();
+		int dist1 = minDis(original, portion1, n, m, dp);
+		std::size_t found2 = edited_error_portion2.find("-");
+		std::string portion2;
+		if (found2!=std::string::npos)
+		{
+			portion2 = left_part + right_part.substr(edited_error_portion2.size());
+		}
+		else
+		{
+			portion2 = left_part + edited_error_portion2 + right_part;
+		}
+		m = portion2.length();
 		std::vector<std::vector<int>> dp2(n+1, std::vector<int>(m+1, -1));
-		int dist2 = minDis(original_error_portion, edited_error_portion2, n, m, dp2);
+		int dist2 = minDis(original, portion2, n, m, dp2);
 		return dist1 < dist2;
 	};
 	std::sort(edited_error_portions.begin(), edited_error_portions.end(), is_less_than);
 	std::ofstream* errwrite_output_file;
 	bool was_edited = false;
 	//we finished the search and presumably we have found one homozygous path or two heterozygous paths
-	if ((!queue_broken) && ((edited_error_portions.size() == 1) or (edited_error_portions.size() == 2)))
+	//if ((!queue_broken) && ((edited_error_portions.size() == 1) or (edited_error_portions.size() == 2)))
+	if (edited_error_portions.size() >= 1)
 	{
 		//errwrite_output_file = &erredits_output_file;
-		edited_read += left_part + edited_error_portions[0];
+		found = edited_error_portions[0].find("-");
+		if (found!=std::string::npos)
+		{
+			edited_read += left_part.substr(0, left_part.size() - edited_error_portions[0].size());
+		}
+		else
+		{
+			edited_read += left_part + edited_error_portions[0];
+		}
 		if (edited_error_portions[0] != original_error_portion)
 		{
 			was_edited = true;
@@ -487,7 +527,15 @@ void write_error_paths(bool& queue_broken, std::vector<std::string>& edited_erro
 	else
 	{
 		//errwrite_output_file = &errpaths_output_file;
-		edited_read += left_part + original_error_portion;
+		found = original_error_portion.find("-");
+		if (found!=std::string::npos)
+		{
+			edited_read += left_part.substr(0, left_part.size() - original_error_portion.size());
+		}
+		else
+		{
+			edited_read += left_part + original_error_portion;
+		}
 		//if (!before_first_error_kmer.empty())
 		//{
 		//	edited_read += before_first_error_kmer.substr(1) + original_error_portion;
@@ -522,7 +570,16 @@ void write_error_paths(bool& queue_broken, std::vector<std::string>& edited_erro
 		errwrite_output_file = &errpaths_queuecomplete0_numpaths3plus_output_file;
 	}
 	outputfileMutex.lock();
-	std::string original_error_block = before_first_error_kmer + original_error_portion + after_last_error_kmer;
+	std::string original_error_block;
+	found = original_error_portion.find("-");
+	if (found!=std::string::npos)
+	{
+		original_error_block = before_first_error_kmer + after_last_error_kmer.substr(original_error_portion.size());
+	}
+	else
+	{
+		original_error_block = before_first_error_kmer + original_error_portion + after_last_error_kmer;
+	}
 	*errwrite_output_file << ">read" << read_number << "_firsterrorkmer" << first_error_idx << "_lasterrorkmer" << last_error_idx << "_original" << '\n';
 	*errwrite_output_file << before_first_error_kmer << " " << original_error_portion << " " << after_last_error_kmer << '\n';
 	if (was_edited)
@@ -548,7 +605,16 @@ void write_error_paths(bool& queue_broken, std::vector<std::string>& edited_erro
 	for (int l = 0; l < edited_error_portions.size(); l++)
 	{
 		std::string edited_error_portion = edited_error_portions[l];
-		std::string edited_error_block = before_first_error_kmer + edited_error_portion + after_last_error_kmer;
+		std::string edited_error_block;
+		found = edited_error_portion.find("-");
+		if (found!=std::string::npos)
+		{
+			edited_error_block = before_first_error_kmer + after_last_error_kmer.substr(edited_error_portion.size());
+		}
+		else
+		{
+			edited_error_block = before_first_error_kmer + edited_error_portion + after_last_error_kmer;
+		}
 		*errwrite_output_file << ">read" << read_number << "_firsterrorkmer" << first_error_idx << "_lasterrorkmer" << last_error_idx << "_path" << l << '\n';
 		*errwrite_output_file << before_first_error_kmer << " " << edited_error_portion << " " << after_last_error_kmer << '\n';
 		if ((l==0) && (was_edited))
@@ -841,20 +907,33 @@ std::string remove_err (std::vector<uint32_t>& v, std::string& read, int& read_n
 				int number_of_error_kmers = i - first_error_idx;
 				//If the position of after_last_error_kmer overlaps before_first_error_kmer
 				//we keep progressing as if nothing has happened, waiting to find another non_error kmer
-				if (number_of_error_kmers < k)
-				{
-					current_type = previous_type;
-					continue;
-				}
+				//if (number_of_error_kmers < k)
+				//{
+				//	current_type = previous_type;
+				//	continue;
+				//}
 				//get kmer that is right after the last error kmer of block
 				after_last_error_kmer = read.substr(i, k);
-				int min_distance_of_path = k;
+				//int min_distance_of_path = k;
+				int min_distance_of_path = std::min(number_of_error_kmers, k);
 				int max_distance_of_path = ceil(distance_multiplier * number_of_error_kmers);
 				bool queue_broken;
 				std::vector<std::string> edited_error_portions = get_paths(file, error_threshold, het_threshold, unique_threshold, before_first_error_kmer, after_last_error_kmer, min_distance_of_path, max_distance_of_path, max_nodes_to_search, k, queue_broken);
 				last_error_idx = i-1;
 				first_nonerror_idx = i;
-				std::string original_error_portion = read.substr(first_error_idx+k-1, last_error_idx - first_error_idx + 2 - k);
+				std::string original_error_portion;
+				//If the after_last_error_kmer overlaps before_first_error_kmer
+				if (last_error_idx - first_error_idx + 2 - k < 0)
+				{
+					for (int number_overlaps=0; number_overlaps < first_error_idx - last_error_idx + k - 2; number_overlaps++)
+					{
+						original_error_portion += "-";
+					}
+				}
+				else
+				{
+					original_error_portion = read.substr(first_error_idx+k-1, last_error_idx - first_error_idx + 2 - k);
+				}
 				write_error_paths(queue_broken, edited_error_portions, errpaths_queuecomplete0_numpaths0_output_file, errpaths_queuecomplete0_numpaths1to2_output_file, errpaths_queuecomplete0_numpaths3plus_output_file, errpaths_queuecomplete1_numpaths0_output_file, errpaths_queuecomplete1_numpaths1to2_output_file, errpaths_queuecomplete1_numpaths3plus_output_file, erredits_output_file, edited_read, read_number, first_error_idx, last_error_idx, before_first_error_kmer, original_error_portion, after_last_error_kmer, file, outputfileMutex);
 			}
 			//if previous kmer is nonerror, we are continuing a non error block
@@ -907,7 +986,7 @@ std::string smooth_het (std::vector<uint32_t>& v, std::string& read, int& read_n
 	std::string after_last_nonhom_kmer;
 	for (int i = 0; i < v.size(); i++)
 	{
-		std::cout << i << '\t' << v[i] << '\n';
+		//std::cout << i << '\t' << v[i] << '\n';
 		std::string previous_kmer;
 		int previous_count;
 		if (i == 0)
