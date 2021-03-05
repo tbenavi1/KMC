@@ -179,7 +179,7 @@ int get_type_het(int& previous_type, std::string& previous_kmer, std::string& cu
 		else if (is_left_anchor(current_kmer, current_count, k, file, error_threshold, het_threshold, unique_threshold, anchor_threshold))
 		{
 			//this is a weird case where we find two left anchors in a row before a right anchor
-			std::cout << "we found two left anchors in a row" << '\n';
+			//std::cout << "we found two left anchors in a row" << '\n';
 			anchor_found = "left";
 			return 2;
 		}
@@ -309,6 +309,7 @@ std::vector<std::string> get_paths(CKMCFile& file, int& error_threshold, int& he
 				{
 					path = adjacent_kmer.front() + current_path;
 				}
+				//std::cout << path << '\n';
 				bool end_condition;
 				//If we are in the middle of the read, we end when we have found a path
 				//of nonerror kmers which bridges the anchor kmers
@@ -925,6 +926,7 @@ std::string remove_err (std::vector<uint32_t>& v, std::string& read, int& read_n
 				//If the after_last_error_kmer overlaps before_first_error_kmer
 				if (last_error_idx - first_error_idx + 2 - k < 0)
 				{
+					//std::cout << i << " anchors overlap here\n";
 					for (int number_overlaps=0; number_overlaps < first_error_idx - last_error_idx + k - 2; number_overlaps++)
 					{
 						original_error_portion += "-";
